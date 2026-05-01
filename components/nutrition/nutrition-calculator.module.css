@@ -102,18 +102,21 @@
   gap: 1rem;
   position: sticky;
   top: 1.25rem;
+  min-width: 0;
   height: fit-content;
 }
 
 .mainColumn {
   display: grid;
   gap: 1.5rem;
+  min-width: 0;
 }
 
 .card,
 .statCard,
 .macroCard,
 .editorCard {
+  min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.86);
@@ -131,6 +134,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.cardHeaderInline {
+  flex-wrap: wrap;
+}
+
+.cardHeaderInline > :first-child {
+  min-width: 0;
+  flex: 1 1 240px;
 }
 
 .cardHeader h2,
@@ -240,6 +252,8 @@
 }
 
 .resetButton {
+  flex: 0 0 auto;
+  max-width: 100%;
   border: 1px solid rgba(79, 131, 255, 0.16);
   border-radius: 999px;
   background: var(--blue-soft);
@@ -316,7 +330,7 @@
 
 .editorGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 1rem;
   margin-top: 1.25rem;
 }
@@ -332,15 +346,21 @@
   gap: 1rem;
 }
 
+.editorHeading > :first-child {
+  min-width: 0;
+}
+
 .editorHeading h3 {
   margin: 0;
   font-size: 1.02rem;
+  overflow-wrap: anywhere;
 }
 
 .editorHeading p {
   margin: 0.3rem 0 0;
   color: var(--text-soft);
   font-size: 0.92rem;
+  overflow-wrap: anywhere;
 }
 
 .colorDot {
@@ -378,6 +398,7 @@
 .editorMeta {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: 0.85rem;
   color: var(--text-soft);
@@ -620,7 +641,6 @@
   }
 
   .barLabels,
-  .editorMeta,
   .cardHeaderInline {
     display: grid;
   }
@@ -652,4 +672,3 @@
     grid-template-columns: 46px 1fr 46px;
   }
 }
-
