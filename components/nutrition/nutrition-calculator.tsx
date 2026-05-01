@@ -3,10 +3,16 @@
 import { useEffect, useState } from "react";
 
 import styles from "./nutrition-calculator.module.css";
+import { NutritionSiteNavigation } from "./site-navigation";
 import {
   exportNutritionReport,
   type NutritionExportFormat,
 } from "@/lib/nutrition-export";
+import {
+  DEFAULT_USER_PROFILE,
+  loadNutritionProfile,
+  saveNutritionProfile,
+} from "@/lib/nutrition-profile-store";
 import {
   ACTIVITY_OPTIONS,
   FOOD_GROUPS,
@@ -19,15 +25,6 @@ import {
   type ServingsPlan,
   type UserProfile,
 } from "@/lib/nutrition-calculator";
-
-const DEFAULT_PROFILE: UserProfile = {
-  heightCm: 165,
-  weightKg: 60,
-  age: 22,
-  sex: "female",
-  activity: "medium",
-  goal: "maintain",
-};
 
 function formatNumber(value: number) {
   if (Number.isInteger(value)) {
@@ -74,10 +71,11 @@ const EXPORT_ACTIONS: Array<{ format: NutritionExportFormat; label: string }> = 
 ];
 
 export function NutritionCalculator() {
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [servings, setServings] = useState<ServingsPlan>(() => {
-    return buildNutritionRecommendation(DEFAULT_PROFILE).recommendedServings;
+    return buildNutritionRecommendation(DEFAULT_USER_PROFILE).recommendedServings;
   });
+  const [profileReady, setProfileReady] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<NutritionExportFormat | null>(
     null,
   );
@@ -89,6 +87,16 @@ export function NutritionCalculator() {
   const recommendation = buildNutritionRecommendation(profile);
 
   useEffect(() => {
+    const storedProfile = loadNutritionProfile();
+
+    if (storedProfile) {
+      setProfile(storedProfile);
+    }
+
+    setProfileReady(true);
+  }, []);
+
+  useEffect(() => {
     setServings(buildNutritionRecommendation(profile).recommendedServings);
   }, [
     profile.heightCm,
@@ -98,6 +106,14 @@ export function NutritionCalculator() {
     profile.activity,
     profile.goal,
   ]);
+
+  useEffect(() => {
+    if (!profileReady) {
+      return;
+    }
+
+    saveNutritionProfile(profile);
+  }, [profile, profileReady]);
 
   const currentSummary = calculateNutritionFromServings(servings);
   const calorieDelta = currentSummary.totalCalories - recommendation.targetCalories;
@@ -193,6 +209,7 @@ export function NutritionCalculator() {
   return (
     <main className={styles.page}>
       <div className={styles.pageGlow} />
+      <NutritionSiteNavigation />
       <section className={styles.hero}>
         <div className={styles.heroBadge}>Daily Nutrition Planner</div>
         <h1 className={styles.title}>每日飲食份數與營養素計算器</h1>
@@ -654,4 +671,3 @@ export function NutritionCalculator() {
     </main>
   );
 }
-

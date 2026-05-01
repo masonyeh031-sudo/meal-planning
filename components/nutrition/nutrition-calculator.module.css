@@ -38,7 +38,7 @@
 }
 
 .hero {
-  padding: 4.75rem 0 2rem;
+  padding: 2.65rem 0 2rem;
 }
 
 .heroBadge {
@@ -624,7 +624,7 @@
 
 @media (max-width: 820px) {
   .hero {
-    padding-top: 3.5rem;
+    padding-top: 2rem;
   }
 
   .statsGrid,
