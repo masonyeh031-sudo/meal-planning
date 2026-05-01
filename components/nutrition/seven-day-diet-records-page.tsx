@@ -1,0 +1,906 @@
+"use client";
+
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+
+import styles from "./seven-day-diet-records.module.css";
+import { NutritionSiteNavigation } from "./site-navigation";
+import {
+  DIET_RECORD_CATEGORIES,
+  DIET_RECORD_MEALS,
+  clearDietWeekRecordsStorage,
+  createEmptyDietFoodEntry,
+  createEmptyDietWeekRecords,
+  exportDietWeekRecords,
+  getDietCategoryMeta,
+  loadDietWeekRecords,
+  saveDietWeekRecords,
+  summarizeDietDay,
+  summarizeDietWeek,
+  validateDietFoodEntry,
+  type DietFoodEntry,
+  type DietMealId,
+  type DietRecordExportFormat,
+  type DietWeekRecords,
+} from "@/lib/diet-records";
+
+function buildMotionStyle(delayMs: number): CSSProperties {
+  return {
+    "--motion-delay": `${delayMs}ms`,
+  } as CSSProperties;
+}
+
+function getDraftKey(dayIndex: number, mealId: DietMealId) {
+  return `${dayIndex}:${mealId}`;
+}
+
+function createMealDraftMap() {
+  const drafts: Record<string, DietFoodEntry> = {};
+
+  for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+    for (const meal of DIET_RECORD_MEALS) {
+      drafts[getDraftKey(dayIndex, meal.id)] = createEmptyDietFoodEntry();
+    }
+  }
+
+  return drafts;
+}
+
+function formatCalories(value: number) {
+  return Math.round(value).toLocaleString("en-US");
+}
+
+function formatDayDate(date: string) {
+  if (!date) {
+    return "未設定日期";
+  }
+
+  const parts = date.split("-");
+
+  if (parts.length !== 3) {
+    return date;
+  }
+
+  return `${Number(parts[1])}/${Number(parts[2])}`;
+}
+
+export function SevenDayDietRecordsPage() {
+  const [weekRecords, setWeekRecords] = useState<DietWeekRecords>(() =>
+    createEmptyDietWeekRecords(),
+  );
+  const [mealDrafts, setMealDrafts] = useState<Record<string, DietFoodEntry>>(() =>
+    createMealDraftMap(),
+  );
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    text: string;
+    isError: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const storedRecords = loadDietWeekRecords();
+
+    if (storedRecords) {
+      setWeekRecords(storedRecords);
+    }
+
+    setMealDrafts(createMealDraftMap());
+    setIsReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    saveDietWeekRecords(weekRecords);
+  }, [weekRecords, isReady]);
+
+  useEffect(() => {
+    if (!feedback) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedback(null);
+    }, 2600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback]);
+
+  const daySummaries = useMemo(
+    () => weekRecords.map((record) => summarizeDietDay(record)),
+    [weekRecords],
+  );
+  const weekSummary = useMemo(() => summarizeDietWeek(weekRecords), [weekRecords]);
+  const activeDayRecord = weekRecords[activeDayIndex];
+  const activeDaySummary = daySummaries[activeDayIndex];
+  const maxWeekCalories = Math.max(
+    ...weekSummary.dailyTotals.map((day) => day.totalCalories),
+    1,
+  );
+
+  function setFeedbackMessage(text: string, isError = false) {
+    setFeedback({ text, isError });
+  }
+
+  function updateMealDraft(
+    mealId: DietMealId,
+    field: keyof Pick<DietFoodEntry, "name" | "amount" | "category" | "calories" | "note">,
+    value: string,
+  ) {
+    const key = getDraftKey(activeDayIndex, mealId);
+
+    setMealDrafts((current) => ({
+      ...current,
+      [key]: {
+        ...current[key],
+        [field]: value,
+      },
+    }));
+  }
+
+  function updateDayRecord(
+    updater: (dayRecord: DietWeekRecords[number]) => DietWeekRecords[number],
+  ) {
+    setWeekRecords((current) =>
+      current.map((dayRecord, index) =>
+        index === activeDayIndex ? updater(dayRecord) : dayRecord,
+      ),
+    );
+  }
+
+  function handleDayDateChange(value: string) {
+    updateDayRecord((dayRecord) => ({
+      ...dayRecord,
+      date: value,
+    }));
+  }
+
+  function handleAddFood(mealId: DietMealId) {
+    const key = getDraftKey(activeDayIndex, mealId);
+    const draft = mealDrafts[key];
+    const errors = validateDietFoodEntry(draft);
+
+    if (errors.length > 0) {
+      setFeedbackMessage(`${errors[0]}，無法新增到 ${DIET_RECORD_MEALS.find((meal) => meal.id === mealId)?.label ?? mealId}。`, true);
+      return;
+    }
+
+    const nextEntry: DietFoodEntry = {
+      ...draft,
+      id: createEmptyDietFoodEntry().id,
+    };
+
+    updateDayRecord((dayRecord) => ({
+      ...dayRecord,
+      meals: {
+        ...dayRecord.meals,
+        [mealId]: [...dayRecord.meals[mealId], nextEntry],
+      },
+    }));
+
+    setMealDrafts((current) => ({
+      ...current,
+      [key]: createEmptyDietFoodEntry(),
+    }));
+
+    setFeedbackMessage("已新增食物，熱量與分類統計已同步更新。");
+  }
+
+  function handleItemFieldChange(
+    mealId: DietMealId,
+    itemId: string,
+    field: keyof Pick<DietFoodEntry, "name" | "amount" | "category" | "calories" | "note">,
+    value: string,
+  ) {
+    updateDayRecord((dayRecord) => ({
+      ...dayRecord,
+      meals: {
+        ...dayRecord.meals,
+        [mealId]: dayRecord.meals[mealId].map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                [field]: value,
+              }
+            : item,
+        ),
+      },
+    }));
+  }
+
+  function handleSaveItem(mealId: DietMealId, itemId: string) {
+    const item = activeDayRecord.meals[mealId].find((food) => food.id === itemId);
+
+    if (!item) {
+      return;
+    }
+
+    const errors = validateDietFoodEntry(item);
+
+    if (errors.length > 0) {
+      setFeedbackMessage(errors[0], true);
+      return;
+    }
+
+    saveDietWeekRecords(weekRecords);
+    setFeedbackMessage("這筆食物已儲存到本機紀錄。");
+  }
+
+  function handleClearItem(mealId: DietMealId, itemId: string) {
+    updateDayRecord((dayRecord) => ({
+      ...dayRecord,
+      meals: {
+        ...dayRecord.meals,
+        [mealId]: dayRecord.meals[mealId].map((item) =>
+          item.id === itemId
+            ? {
+                ...createEmptyDietFoodEntry(),
+                id: itemId,
+              }
+            : item,
+        ),
+      },
+    }));
+
+    setFeedbackMessage("這筆食物已清空，可重新填寫或直接刪除。");
+  }
+
+  function handleDeleteItem(mealId: DietMealId, itemId: string) {
+    updateDayRecord((dayRecord) => ({
+      ...dayRecord,
+      meals: {
+        ...dayRecord.meals,
+        [mealId]: dayRecord.meals[mealId].filter((item) => item.id !== itemId),
+      },
+    }));
+
+    setFeedbackMessage("這筆食物已刪除。");
+  }
+
+  function handleSaveAll() {
+    saveDietWeekRecords(weekRecords);
+    setFeedbackMessage("本週飲食紀錄已儲存到本機。");
+  }
+
+  function handleLoadRecords() {
+    const storedRecords = loadDietWeekRecords();
+
+    if (!storedRecords) {
+      setFeedbackMessage("目前找不到已儲存的本週紀錄。", true);
+      return;
+    }
+
+    setWeekRecords(storedRecords);
+    setMealDrafts(createMealDraftMap());
+    setActiveDayIndex(0);
+    setFeedbackMessage("已載入本機的七天飲食紀錄。");
+  }
+
+  function handleClearWeek() {
+    if (typeof window !== "undefined") {
+      const shouldClear = window.confirm("確定要清除這一週的飲食紀錄嗎？");
+
+      if (!shouldClear) {
+        return;
+      }
+    }
+
+    const emptyRecords = createEmptyDietWeekRecords();
+    clearDietWeekRecordsStorage();
+    setWeekRecords(emptyRecords);
+    setMealDrafts(createMealDraftMap());
+    setActiveDayIndex(0);
+    setFeedbackMessage("本週紀錄已清除。");
+  }
+
+  function handleExport(format: DietRecordExportFormat) {
+    try {
+      const filename = exportDietWeekRecords(format, weekRecords);
+      setFeedbackMessage(`已匯出 ${filename}`);
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof Error ? error.message : "匯出失敗，請稍後再試。",
+        true,
+      );
+    }
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.pageGlow} />
+      <NutritionSiteNavigation />
+
+      <section className={styles.hero}>
+        <div className={styles.heroBadge}>7-Day Food Journal</div>
+        <h1 className={styles.title}>七天飲食紀錄</h1>
+        <p className={styles.description}>
+          記錄每日三餐、點心與宵夜，了解自己的熱量與六大類食物攝取狀況。
+        </p>
+
+        <div className={styles.heroStats}>
+          <article className={styles.heroStat} style={buildMotionStyle(120)}>
+            <span>七天總熱量</span>
+            <strong>{formatCalories(weekSummary.totalCalories)} kcal</strong>
+            <p>每天紀錄會自動累加成一週總量。</p>
+          </article>
+          <article className={styles.heroStat} style={buildMotionStyle(190)}>
+            <span>平均每日熱量</span>
+            <strong>{formatCalories(weekSummary.averageCalories)} kcal</strong>
+            <p>以七天總熱量 ÷ 7 計算。</p>
+          </article>
+          <article className={styles.heroStat} style={buildMotionStyle(260)}>
+            <span>已記錄食物筆數</span>
+            <strong>{weekSummary.totalItems} 筆</strong>
+            <p>
+              {weekSummary.invalidItems > 0
+                ? `目前有 ${weekSummary.invalidItems} 筆欄位需要補正。`
+                : "目前沒有需要補正的欄位。"}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.content}>
+        <section className={styles.actionCard} style={buildMotionStyle(180)}>
+          <div className={styles.actionHeader}>
+            <div>
+              <span className={styles.eyebrow}>操作區</span>
+              <h2>本機儲存與匯出</h2>
+            </div>
+            <p className={styles.autoSaveHint}>頁面會自動暫存於 localStorage，重新整理後資料不會消失。</p>
+          </div>
+
+          <div className={styles.actionToolbar}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={handleSaveAll}
+            >
+              儲存紀錄
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleLoadRecords}
+            >
+              載入紀錄
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleClearWeek}
+            >
+              清除本週紀錄
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => handleExport("json")}
+            >
+              匯出 JSON
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => handleExport("csv")}
+            >
+              匯出 CSV
+            </button>
+          </div>
+
+          {feedback ? (
+            <p className={feedback.isError ? styles.feedbackError : styles.feedback}>
+              {feedback.text}
+            </p>
+          ) : null}
+        </section>
+
+        <section className={styles.dayCard} style={buildMotionStyle(240)}>
+          <div className={styles.dayHeader}>
+            <div>
+              <span className={styles.eyebrow}>七天切換</span>
+              <h2>選擇要記錄的日期</h2>
+            </div>
+            <label className={styles.dateField}>
+              <span>當日日期</span>
+              <input
+                className={styles.input}
+                type="date"
+                value={activeDayRecord.date}
+                onChange={(event) => handleDayDateChange(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={styles.dayTabs}>
+            {weekRecords.map((record, index) => (
+              <button
+                key={record.day}
+                type="button"
+                className={
+                  index === activeDayIndex ? styles.dayTabActive : styles.dayTab
+                }
+                onClick={() => setActiveDayIndex(index)}
+              >
+                <strong>{record.label}</strong>
+                <span>{formatDayDate(record.date)}</span>
+                <small>{formatCalories(daySummaries[index].totalCalories)} kcal</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.layout}>
+          <div className={styles.recordsColumn}>
+            {DIET_RECORD_MEALS.map((meal, mealIndex) => {
+              const draftKey = getDraftKey(activeDayIndex, meal.id);
+              const draft = mealDrafts[draftKey];
+              const draftErrors = validateDietFoodEntry(draft);
+              const isDraftDirty = Boolean(
+                draft.name.trim() ||
+                  draft.amount.trim() ||
+                  draft.calories.trim() ||
+                  draft.note.trim(),
+              );
+
+              return (
+                <article
+                  key={meal.id}
+                  className={styles.mealCard}
+                  style={buildMotionStyle(280 + mealIndex * 60)}
+                >
+                  <div className={styles.mealHeader}>
+                    <div>
+                      <span className={styles.eyebrow}>{meal.label}</span>
+                      <h3>{meal.label}記錄</h3>
+                    </div>
+                    <strong className={styles.mealCalories}>
+                      {formatCalories(activeDaySummary.mealCalories[meal.id])} kcal
+                    </strong>
+                  </div>
+
+                  <div className={styles.addForm}>
+                    <div className={styles.formGrid}>
+                      <label className={styles.field}>
+                        <span>食物名稱</span>
+                        <input
+                          className={styles.input}
+                          type="text"
+                          placeholder="例如：白飯、雞胸肉"
+                          value={draft.name}
+                          onChange={(event) =>
+                            updateMealDraft(meal.id, "name", event.target.value)
+                          }
+                        />
+                      </label>
+                      <label className={styles.field}>
+                        <span>食物份量</span>
+                        <input
+                          className={styles.input}
+                          type="text"
+                          placeholder="例如：1 碗、100g、250ml"
+                          value={draft.amount}
+                          onChange={(event) =>
+                            updateMealDraft(meal.id, "amount", event.target.value)
+                          }
+                        />
+                      </label>
+                      <label className={styles.field}>
+                        <span>六大類分類</span>
+                        <select
+                          className={styles.select}
+                          value={draft.category}
+                          onChange={(event) =>
+                            updateMealDraft(meal.id, "category", event.target.value)
+                          }
+                        >
+                          {DIET_RECORD_CATEGORIES.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.field}>
+                        <span>熱量 kcal</span>
+                        <input
+                          className={draft.calories.trim() && draftErrors.length > 0 ? styles.inputError : styles.input}
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="例如：230"
+                          value={draft.calories}
+                          onChange={(event) =>
+                            updateMealDraft(meal.id, "calories", event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <label className={styles.field}>
+                      <span>備註</span>
+                      <textarea
+                        className={styles.textarea}
+                        rows={2}
+                        placeholder="例如：外食、少油、半糖、運動後吃"
+                        value={draft.note}
+                        onChange={(event) =>
+                          updateMealDraft(meal.id, "note", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <div className={styles.addActions}>
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => handleAddFood(meal.id)}
+                      >
+                        新增食物
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.ghostButton}
+                        onClick={() =>
+                          setMealDrafts((current) => ({
+                            ...current,
+                            [draftKey]: createEmptyDietFoodEntry(),
+                          }))
+                        }
+                      >
+                        清空輸入
+                      </button>
+                    </div>
+
+                    {isDraftDirty && draftErrors.length > 0 ? (
+                      <p className={styles.inlineError}>{draftErrors[0]}</p>
+                    ) : null}
+                  </div>
+
+                  {activeDayRecord.meals[meal.id].length > 0 ? (
+                    <div className={styles.foodList}>
+                      {activeDayRecord.meals[meal.id].map((item, itemIndex) => {
+                        const categoryMeta = getDietCategoryMeta(item.category);
+                        const itemErrors = validateDietFoodEntry(item);
+
+                        return (
+                          <article
+                            key={item.id}
+                            className={
+                              itemErrors.length > 0 ? styles.foodRowInvalid : styles.foodRow
+                            }
+                            style={buildMotionStyle(320 + itemIndex * 45)}
+                          >
+                            <div className={styles.foodRowHeader}>
+                              <div className={styles.foodRowTitle}>
+                                <strong>第 {itemIndex + 1} 筆食物</strong>
+                                <span
+                                  className={styles.categoryBadge}
+                                  style={{
+                                    color: categoryMeta.color,
+                                    backgroundColor: categoryMeta.softColor,
+                                  }}
+                                >
+                                  {categoryMeta.label}
+                                </span>
+                              </div>
+                              <small>{item.calories || "0"} kcal</small>
+                            </div>
+
+                            <div className={styles.formGrid}>
+                              <label className={styles.field}>
+                                <span>食物名稱</span>
+                                <input
+                                  className={!item.name.trim() ? styles.inputError : styles.input}
+                                  type="text"
+                                  value={item.name}
+                                  onChange={(event) =>
+                                    handleItemFieldChange(
+                                      meal.id,
+                                      item.id,
+                                      "name",
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </label>
+                              <label className={styles.field}>
+                                <span>食物份量</span>
+                                <input
+                                  className={styles.input}
+                                  type="text"
+                                  value={item.amount}
+                                  onChange={(event) =>
+                                    handleItemFieldChange(
+                                      meal.id,
+                                      item.id,
+                                      "amount",
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </label>
+                              <label className={styles.field}>
+                                <span>六大類分類</span>
+                                <select
+                                  className={styles.select}
+                                  value={item.category}
+                                  onChange={(event) =>
+                                    handleItemFieldChange(
+                                      meal.id,
+                                      item.id,
+                                      "category",
+                                      event.target.value,
+                                    )
+                                  }
+                                >
+                                  {DIET_RECORD_CATEGORIES.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                      {category.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className={styles.field}>
+                                <span>熱量 kcal</span>
+                                <input
+                                  className={
+                                    item.calories.trim() && itemErrors.length > 0
+                                      ? styles.inputError
+                                      : styles.input
+                                  }
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={item.calories}
+                                  onChange={(event) =>
+                                    handleItemFieldChange(
+                                      meal.id,
+                                      item.id,
+                                      "calories",
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </label>
+                            </div>
+
+                            <label className={styles.field}>
+                              <span>備註</span>
+                              <textarea
+                                className={styles.textarea}
+                                rows={2}
+                                value={item.note}
+                                onChange={(event) =>
+                                  handleItemFieldChange(
+                                    meal.id,
+                                    item.id,
+                                    "note",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </label>
+
+                            <div className={styles.rowActions}>
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                onClick={() => handleSaveItem(meal.id, item.id)}
+                              >
+                                儲存
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.ghostButton}
+                                onClick={() => handleClearItem(meal.id, item.id)}
+                              >
+                                清空
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.deleteButton}
+                                onClick={() => handleDeleteItem(meal.id, item.id)}
+                              >
+                                刪除
+                              </button>
+                            </div>
+
+                            {itemErrors.length > 0 ? (
+                              <p className={styles.inlineError}>{itemErrors[0]}</p>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className={styles.emptyState}>這一餐還沒有新增食物。</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+
+          <aside className={styles.summaryColumn}>
+            <section className={styles.summaryCard} style={buildMotionStyle(320)}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>每日摘要</span>
+                  <h2>{activeDayRecord.label} 熱量總覽</h2>
+                </div>
+                <strong className={styles.dailyTotal}>
+                  {formatCalories(activeDaySummary.totalCalories)} kcal
+                </strong>
+              </div>
+
+              <div className={styles.summaryGrid}>
+                <article className={styles.summaryMetric}>
+                  <span>今日總熱量</span>
+                  <strong>{formatCalories(activeDaySummary.totalCalories)} kcal</strong>
+                </article>
+                {DIET_RECORD_MEALS.map((meal) => (
+                  <article key={meal.id} className={styles.summaryMetric}>
+                    <span>{meal.label}</span>
+                    <strong>{formatCalories(activeDaySummary.mealCalories[meal.id])} kcal</strong>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className={styles.summaryCard} style={buildMotionStyle(390)}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>六大類統計</span>
+                  <h2>今天吃到哪些類別</h2>
+                </div>
+              </div>
+
+              {activeDaySummary.categoriesConsumed.length > 0 ? (
+                <>
+                  <div className={styles.badgeList}>
+                    {activeDaySummary.categoriesConsumed.map((category) => (
+                      <span
+                        key={category.categoryId}
+                        className={styles.categoryBadge}
+                        style={{
+                          color: category.color,
+                          backgroundColor: category.softColor,
+                        }}
+                      >
+                        {category.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className={styles.categoryList}>
+                    {activeDaySummary.categoryStats
+                      .filter((category) => category.count > 0)
+                      .map((category, index) => (
+                        <article
+                          key={category.categoryId}
+                          className={styles.categoryCard}
+                          style={buildMotionStyle(430 + index * 50)}
+                        >
+                          <div className={styles.categoryCardHeader}>
+                            <strong>{category.label}</strong>
+                            <span
+                              className={styles.categoryDot}
+                              style={{ backgroundColor: category.color }}
+                            />
+                          </div>
+                          <p>{category.count} 筆食物</p>
+                          <small>{formatCalories(category.totalCalories)} kcal</small>
+                        </article>
+                      ))}
+                  </div>
+                </>
+              ) : (
+                <p className={styles.emptyState}>今天尚未記錄六大類食物。</p>
+              )}
+            </section>
+          </aside>
+        </section>
+
+        <section className={styles.weekCard} style={buildMotionStyle(460)}>
+          <div className={styles.cardHeader}>
+            <div>
+              <span className={styles.eyebrow}>七天總覽</span>
+              <h2>一週熱量與分類統計</h2>
+            </div>
+          </div>
+
+          <div className={styles.weekStatsGrid}>
+            <article className={styles.weekStat}>
+              <span>七天總熱量</span>
+              <strong>{formatCalories(weekSummary.totalCalories)} kcal</strong>
+            </article>
+            <article className={styles.weekStat}>
+              <span>平均每日熱量</span>
+              <strong>{formatCalories(weekSummary.averageCalories)} kcal</strong>
+            </article>
+            <article className={styles.weekStat}>
+              <span>熱量最高的一天</span>
+              <strong>
+                {weekSummary.highestDay
+                  ? `${weekSummary.highestDay.label} ・ ${formatCalories(
+                      weekSummary.highestDay.totalCalories,
+                    )} kcal`
+                  : "尚未開始"}
+              </strong>
+            </article>
+            <article className={styles.weekStat}>
+              <span>熱量最低的一天</span>
+              <strong>
+                {weekSummary.lowestDay
+                  ? `${weekSummary.lowestDay.label} ・ ${formatCalories(
+                      weekSummary.lowestDay.totalCalories,
+                    )} kcal`
+                  : "尚未開始"}
+              </strong>
+            </article>
+          </div>
+
+          <div className={styles.weekCharts}>
+            <section className={styles.chartCard}>
+              <div className={styles.chartHeader}>
+                <h3>每日熱量比較圖</h3>
+                <p>可快速看出哪一天吃得較多或較少。</p>
+              </div>
+
+              <div className={styles.barList}>
+                {weekSummary.dailyTotals.map((day, index) => (
+                  <div
+                    key={day.day}
+                    className={styles.barRow}
+                    style={buildMotionStyle(520 + index * 45)}
+                  >
+                    <div className={styles.barLabel}>
+                      <strong>{day.label}</strong>
+                      <span>{formatDayDate(day.date)}</span>
+                    </div>
+                    <div className={styles.barTrack}>
+                      <div
+                        className={styles.barFill}
+                        style={{
+                          width: `${(day.totalCalories / maxWeekCalories) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <small>{formatCalories(day.totalCalories)} kcal</small>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className={styles.chartCard}>
+              <div className={styles.chartHeader}>
+                <h3>七天六大類統計</h3>
+                <p>顯示各類別出現次數與總熱量。</p>
+              </div>
+
+              <div className={styles.weekCategoryList}>
+                {weekSummary.categoryStats.map((category, index) => (
+                  <article
+                    key={category.categoryId}
+                    className={styles.weekCategoryCard}
+                    style={buildMotionStyle(560 + index * 45)}
+                  >
+                    <div className={styles.categoryCardHeader}>
+                      <strong>{category.label}</strong>
+                      <span
+                        className={styles.categoryDot}
+                        style={{ backgroundColor: category.color }}
+                      />
+                    </div>
+                    <p>出現 {category.count} 次</p>
+                    <small>累積 {formatCalories(category.totalCalories)} kcal</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}
