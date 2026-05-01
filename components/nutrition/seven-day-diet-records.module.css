@@ -289,6 +289,16 @@
   box-shadow: 0 12px 24px rgba(79, 103, 95, 0.12);
 }
 
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.ghostButton:disabled,
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+  box-shadow: none;
+}
+
 .feedback,
 .feedbackError {
   margin: 1rem 0 0;
@@ -666,6 +676,162 @@
   line-height: 1.5;
 }
 
+.insightGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.insightCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 1.15rem;
+  box-shadow: inset 0 0 0 1px rgba(108, 131, 123, 0.08);
+}
+
+.reminderList {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.reminderCard {
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+}
+
+.reminderGood {
+  background: rgba(140, 198, 161, 0.12);
+}
+
+.reminderWatch {
+  background: rgba(141, 190, 252, 0.12);
+}
+
+.reminderLow {
+  background: rgba(245, 169, 107, 0.14);
+}
+
+.reminderMissing {
+  background: rgba(222, 120, 92, 0.12);
+}
+
+.reminderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.reminderHeader strong {
+  font-size: 1rem;
+}
+
+.reminderCard p {
+  margin: 0.65rem 0 0.35rem;
+  color: var(--text-main);
+  line-height: 1.7;
+}
+
+.reminderCard small {
+  color: var(--text-soft);
+}
+
+.reminderTip {
+  margin-top: 0.7rem;
+  color: var(--text-main);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  font-weight: 600;
+}
+
+.reviewBalanced {
+  background: linear-gradient(135deg, rgba(140, 198, 161, 0.14), rgba(255, 255, 255, 0.96));
+}
+
+.reviewOver {
+  background: linear-gradient(135deg, rgba(245, 169, 107, 0.16), rgba(255, 255, 255, 0.96));
+}
+
+.reviewUnder {
+  background: linear-gradient(135deg, rgba(141, 190, 252, 0.16), rgba(255, 255, 255, 0.96));
+}
+
+.reviewIncomplete {
+  background: linear-gradient(135deg, rgba(184, 180, 167, 0.16), rgba(255, 255, 255, 0.96));
+}
+
+.reviewCardBody {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.reviewLead {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.reviewLead strong {
+  display: block;
+  font-size: 1.2rem;
+}
+
+.reviewLead p {
+  margin: 0.55rem 0 0;
+  color: var(--text-soft);
+  line-height: 1.75;
+}
+
+.reviewHighlights {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.reviewHighlight {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.reviewDot {
+  width: 12px;
+  height: 12px;
+  margin-top: 0.33rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8cc6a1, #f5a96b);
+}
+
+.reviewHighlight p {
+  margin: 0;
+  color: var(--text-main);
+  line-height: 1.7;
+}
+
+.reviewNextStep {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 0.9rem 1rem;
+  box-shadow: inset 0 0 0 1px rgba(108, 131, 123, 0.08);
+}
+
+.reviewNextStep span {
+  display: block;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.reviewNextStep strong {
+  display: block;
+  margin-top: 0.45rem;
+  line-height: 1.7;
+}
+
 .categoryList,
 .weekCategoryList {
   display: grid;
@@ -791,6 +957,7 @@
   }
 
   .layout,
+  .insightGrid,
   .weekCharts {
     grid-template-columns: 1fr;
   }

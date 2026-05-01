@@ -23,6 +23,11 @@ import {
   type DietRecordExportFormat,
   type DietWeekRecords,
 } from "@/lib/diet-records";
+import {
+  buildDietCategoryCoverage,
+  buildDietWeeklyReview,
+} from "@/lib/diet-record-insights";
+import { exportDietComparisonPdf } from "@/lib/diet-record-pdf-export";
 import { loadNutritionProfile } from "@/lib/nutrition-profile-store";
 import {
   GOAL_OPTIONS,
@@ -109,6 +114,7 @@ export function SevenDayDietRecordsPage() {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [nutritionProfile, setNutritionProfile] = useState<UserProfile | null>(null);
+  const [exportingComparisonPdf, setExportingComparisonPdf] = useState(false);
   const [feedback, setFeedback] = useState<{
     text: string;
     isError: boolean;
@@ -186,6 +192,31 @@ export function SevenDayDietRecordsPage() {
     targetCalories !== null
       ? trackedDays.filter((day) => targetCalories - day.totalCalories > 150).length
       : 0;
+  const categoryCoverage = useMemo(
+    () => buildDietCategoryCoverage(daySummaries, trackedDaysCount),
+    [daySummaries, trackedDaysCount],
+  );
+  const weeklyReview = useMemo(
+    () =>
+      buildDietWeeklyReview({
+        weekSummary,
+        trackedDaysCount,
+        targetCalories,
+        daysNearTarget,
+        daysOverTarget,
+        daysUnderTarget,
+        categoryCoverage,
+      }),
+    [
+      weekSummary,
+      trackedDaysCount,
+      targetCalories,
+      daysNearTarget,
+      daysOverTarget,
+      daysUnderTarget,
+      categoryCoverage,
+    ],
+  );
   const weekDelta =
     targetCalories !== null && weeklyRecommendedCalories !== null
       ? weekSummary.totalCalories - weeklyRecommendedCalories
@@ -204,6 +235,32 @@ export function SevenDayDietRecordsPage() {
         return styles.compareBadgeOver;
       case "under":
         return styles.compareBadgeUnder;
+    }
+  }
+
+  function getReminderCardClassName(status: "good" | "watch" | "low" | "missing") {
+    switch (status) {
+      case "good":
+        return styles.reminderGood;
+      case "watch":
+        return styles.reminderWatch;
+      case "low":
+        return styles.reminderLow;
+      case "missing":
+        return styles.reminderMissing;
+    }
+  }
+
+  function getReviewToneClassName(tone: "balanced" | "over" | "under" | "incomplete") {
+    switch (tone) {
+      case "balanced":
+        return styles.reviewBalanced;
+      case "over":
+        return styles.reviewOver;
+      case "under":
+        return styles.reviewUnder;
+      case "incomplete":
+        return styles.reviewIncomplete;
     }
   }
 
@@ -394,6 +451,34 @@ export function SevenDayDietRecordsPage() {
     }
   }
 
+  async function handleExportComparisonPdf() {
+    setExportingComparisonPdf(true);
+
+    try {
+      const filename = await exportDietComparisonPdf({
+        nutritionProfile,
+        targetCalories,
+        trackedDaysCount,
+        daysNearTarget,
+        daysOverTarget,
+        daysUnderTarget,
+        weekDelta,
+        weekSummary,
+        categoryCoverage,
+        weeklyReview,
+      });
+
+      setFeedbackMessage(`已匯出 ${filename}`);
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof Error ? error.message : "PDF 匯出失敗，請稍後再試。",
+        true,
+      );
+    } finally {
+      setExportingComparisonPdf(false);
+    }
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.pageGlow} />
@@ -485,6 +570,14 @@ export function SevenDayDietRecordsPage() {
               onClick={() => handleExport("csv")}
             >
               匯出 CSV
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => void handleExportComparisonPdf()}
+              disabled={exportingComparisonPdf}
+            >
+              {exportingComparisonPdf ? "匯出中..." : "七天熱量對比 PDF"}
             </button>
           </div>
 
@@ -1052,6 +1145,82 @@ export function SevenDayDietRecordsPage() {
               對比規則：每日實際熱量與建議熱量相差在 ±150 kcal 內，視為接近建議值。
             </p>
           ) : null}
+
+          <div className={styles.insightGrid}>
+            <section className={styles.insightCard}>
+              <div className={styles.chartHeader}>
+                <h3>六大類食物攝取不足提醒</h3>
+                <p>優先列出本週最需要補強的類別，讓你知道下週可以從哪裡調整。</p>
+              </div>
+
+              <div className={styles.reminderList}>
+                {categoryCoverage.map((category, index) => (
+                  <article
+                    key={category.categoryId}
+                    className={`${styles.reminderCard} ${getReminderCardClassName(
+                      category.status,
+                    )}`}
+                    style={buildMotionStyle(600 + index * 40)}
+                  >
+                    <div className={styles.reminderHeader}>
+                      <strong>{category.label}</strong>
+                      <span className={getStatusClassName(
+                        category.status === "missing"
+                          ? "over"
+                          : category.status === "low"
+                            ? "under"
+                            : "aligned",
+                      )}>
+                        {category.status === "missing"
+                          ? "明顯不足"
+                          : category.status === "low"
+                            ? "偏少"
+                            : category.status === "watch"
+                              ? "可再補強"
+                              : "目前穩定"}
+                      </span>
+                    </div>
+                    <p>{category.message}</p>
+                    <small>
+                      出現 {category.dayCount} / {category.trackedDaysCount || 7} 天 ・ 累積{" "}
+                      {formatCalories(category.totalCalories)} kcal
+                    </small>
+                    <div className={styles.reminderTip}>建議：{category.recommendation}</div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section
+              className={`${styles.insightCard} ${getReviewToneClassName(weeklyReview.tone)}`}
+            >
+              <div className={styles.chartHeader}>
+                <h3>本週飲食評語卡</h3>
+                <p>把熱量趨勢、類別分布與下週調整方向整理成一句話與幾個重點。</p>
+              </div>
+
+              <div className={styles.reviewCardBody}>
+                <div className={styles.reviewLead}>
+                  <strong>{weeklyReview.title}</strong>
+                  <p>{weeklyReview.summary}</p>
+                </div>
+
+                <div className={styles.reviewHighlights}>
+                  {weeklyReview.highlights.map((highlight) => (
+                    <div key={highlight} className={styles.reviewHighlight}>
+                      <span className={styles.reviewDot} />
+                      <p>{highlight}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.reviewNextStep}>
+                  <span>下週建議</span>
+                  <strong>{weeklyReview.nextStep}</strong>
+                </div>
+              </div>
+            </section>
+          </div>
 
           <div className={styles.weekCharts}>
             <section className={styles.chartCard}>
