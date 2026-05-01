@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import styles from "./nutrition-calculator.module.css";
 import { NutritionSiteNavigation } from "./site-navigation";
@@ -61,6 +61,12 @@ function buildMacroGradient(values: Array<{ value: number; color: string }>) {
   });
 
   return `conic-gradient(${segments.join(", ")})`;
+}
+
+function buildMotionStyle(delayMs: number): CSSProperties {
+  return {
+    "--motion-delay": `${delayMs}ms`,
+  } as CSSProperties;
 }
 
 const EXPORT_ACTIONS: Array<{ format: NutritionExportFormat; label: string }> = [
@@ -153,6 +159,9 @@ export function NutritionCalculator() {
   const donutBackground = buildMacroGradient(
     macroBreakdown.map((item) => ({ value: item.calories, color: item.color })),
   );
+  const donutMotionKey = macroBreakdown
+    .map((item) => `${item.label}-${Math.round(item.grams)}-${Math.round(item.ratio * 10)}`)
+    .join(":");
 
   const barMaxValue = Math.max(
     ...FOOD_GROUPS.map((group) => servings[group.id]),
@@ -225,7 +234,7 @@ export function NutritionCalculator() {
 
       <section className={styles.workspace}>
         <aside className={styles.sidebar}>
-          <article className={styles.card}>
+          <article className={styles.card} style={buildMotionStyle(120)}>
             <div className={styles.cardHeader}>
               <span className={styles.eyebrow}>輸入區</span>
               <h2>個人資料</h2>
@@ -331,7 +340,7 @@ export function NutritionCalculator() {
             </div>
           </article>
 
-          <article className={styles.card}>
+          <article className={styles.card} style={buildMotionStyle(180)}>
             <div className={styles.cardHeader}>
               <span className={styles.eyebrow}>計算規則</span>
               <h2>估算邏輯</h2>
@@ -345,7 +354,7 @@ export function NutritionCalculator() {
             </ul>
           </article>
 
-          <article className={styles.card}>
+          <article className={styles.card} style={buildMotionStyle(240)}>
             <div className={styles.cardHeader}>
               <span className={styles.eyebrow}>使用情境</span>
               <h2>適用對象</h2>
@@ -358,7 +367,7 @@ export function NutritionCalculator() {
 
         <div className={styles.mainColumn}>
           <section className={styles.statsGrid}>
-            <article className={styles.statCard}>
+            <article className={styles.statCard} style={buildMotionStyle(140)}>
               <span className={styles.statLabel}>每日建議熱量</span>
               <strong className={styles.statValue}>
                 {recommendation.targetCalories}
@@ -366,7 +375,7 @@ export function NutritionCalculator() {
               </strong>
               <p className={styles.statHint}>{goalLabel}模式</p>
             </article>
-            <article className={styles.statCard}>
+            <article className={styles.statCard} style={buildMotionStyle(200)}>
               <span className={styles.statLabel}>目前份數總熱量</span>
               <strong className={styles.statValue}>
                 {Math.round(currentSummary.totalCalories)}
@@ -374,7 +383,7 @@ export function NutritionCalculator() {
               </strong>
               <p className={styles.statHint}>{formatSignedCalories(calorieDelta)}</p>
             </article>
-            <article className={styles.statCard}>
+            <article className={styles.statCard} style={buildMotionStyle(260)}>
               <span className={styles.statLabel}>BMI</span>
               <strong className={styles.statValue}>
                 {recommendation.bmi.toFixed(1)}
@@ -382,7 +391,7 @@ export function NutritionCalculator() {
               </strong>
               <p className={styles.statHint}>由身高與體重估算</p>
             </article>
-            <article className={styles.statCard}>
+            <article className={styles.statCard} style={buildMotionStyle(320)}>
               <span className={styles.statLabel}>份數分配基準</span>
               <strong className={styles.statValue}>
                 {activityLabel}
@@ -392,7 +401,7 @@ export function NutritionCalculator() {
             </article>
           </section>
 
-          <section className={styles.card}>
+          <section className={styles.card} style={buildMotionStyle(220)}>
             <div className={styles.cardHeader}>
               <div>
                 <span className={styles.eyebrow}>匯出功能</span>
@@ -431,7 +440,7 @@ export function NutritionCalculator() {
             ) : null}
           </section>
 
-          <section className={styles.card}>
+          <section className={styles.card} style={buildMotionStyle(280)}>
             <div className={styles.cardHeaderInline}>
               <div>
                 <span className={styles.eyebrow}>結果區</span>
@@ -451,11 +460,14 @@ export function NutritionCalculator() {
             </p>
 
             <div className={styles.editorGrid}>
-              {FOOD_GROUPS.map((group) => (
+              {FOOD_GROUPS.map((group, index) => (
                 <article
                   key={group.id}
                   className={styles.editorCard}
-                  style={{ borderColor: `${group.color}26` }}
+                  style={{
+                    borderColor: `${group.color}26`,
+                    ...buildMotionStyle(320 + index * 55),
+                  }}
                 >
                   <div className={styles.editorHeading}>
                     <div>
@@ -504,8 +516,12 @@ export function NutritionCalculator() {
           </section>
 
           <section className={styles.macroCards}>
-            {macroBreakdown.map((item) => (
-              <article key={item.label} className={styles.macroCard}>
+            {macroBreakdown.map((item, index) => (
+              <article
+                key={item.label}
+                className={styles.macroCard}
+                style={buildMotionStyle(330 + index * 70)}
+              >
                 <span className={styles.macroLabel} style={{ color: item.color }}>
                   {item.label}
                 </span>
@@ -518,13 +534,14 @@ export function NutritionCalculator() {
           </section>
 
           <section className={styles.chartGrid}>
-            <article className={styles.card}>
+            <article className={styles.card} style={buildMotionStyle(390)}>
               <div className={styles.cardHeader}>
                 <span className={styles.eyebrow}>圖表</span>
                 <h2>三大營養素比例</h2>
               </div>
               <div className={styles.donutLayout}>
                 <div
+                  key={donutMotionKey}
                   className={styles.donutChart}
                   style={{ backgroundImage: donutBackground }}
                   aria-hidden="true"
@@ -553,14 +570,18 @@ export function NutritionCalculator() {
               </div>
             </article>
 
-            <article className={styles.card}>
+            <article className={styles.card} style={buildMotionStyle(440)}>
               <div className={styles.cardHeader}>
                 <span className={styles.eyebrow}>圖表</span>
                 <h2>各類食物份數</h2>
               </div>
               <div className={styles.barList}>
-                {FOOD_GROUPS.map((group) => (
-                  <div key={group.id} className={styles.barRow}>
+                {FOOD_GROUPS.map((group, index) => (
+                  <div
+                    key={group.id}
+                    className={styles.barRow}
+                    style={buildMotionStyle(460 + index * 40)}
+                  >
                     <div className={styles.barLabels}>
                       <strong>{group.label}</strong>
                       <span>
@@ -591,7 +612,7 @@ export function NutritionCalculator() {
             </article>
           </section>
 
-          <section className={styles.card}>
+          <section className={styles.card} style={buildMotionStyle(500)}>
             <div className={styles.cardHeader}>
               <span className={styles.eyebrow}>明細表</span>
               <h2>每類食物計算明細</h2>
@@ -663,7 +684,7 @@ export function NutritionCalculator() {
             </div>
           </section>
 
-          <section className={styles.disclaimer}>
+          <section className={styles.disclaimer} style={buildMotionStyle(560)}>
             此結果為估算值，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。
           </section>
         </div>

@@ -1,3 +1,60 @@
+@keyframes driftGlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, -18px, 0) scale(1.03);
+  }
+}
+
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes softFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+@keyframes chartBloom {
+  from {
+    opacity: 0;
+    transform: scale(0.92) rotate(-12deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes centerPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
 .page {
   --page-bg: #f6fbfc;
   --text-main: #17313b;
@@ -27,6 +84,7 @@
   background-size: 32px 32px;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 75%);
   pointer-events: none;
+  animation: driftGlow 18s ease-in-out infinite;
 }
 
 .hero,
@@ -55,6 +113,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   box-shadow: var(--card-shadow);
+  animation: revealUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .title {
@@ -62,6 +121,7 @@
   font-size: clamp(2.2rem, 5vw, 4.4rem);
   line-height: 1.06;
   letter-spacing: -0.04em;
+  animation: revealUp 0.72s cubic-bezier(0.22, 1, 0.36, 1) 70ms both;
 }
 
 .description {
@@ -70,6 +130,7 @@
   color: var(--text-soft);
   font-size: 1.05rem;
   line-height: 1.85;
+  animation: revealUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
 }
 
 .heroChips {
@@ -77,6 +138,7 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.5rem;
+  animation: revealUp 0.82s cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
 }
 
 .chip {
@@ -87,6 +149,16 @@
   color: var(--text-main);
   font-size: 0.92rem;
   box-shadow: 0 10px 22px rgba(54, 94, 118, 0.08);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(54, 94, 118, 0.12);
+  border-color: rgba(79, 131, 255, 0.2);
 }
 
 .workspace {
@@ -116,12 +188,44 @@
 .statCard,
 .macroCard,
 .editorCard {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: var(--card-shadow);
   backdrop-filter: blur(18px);
+  transition:
+    transform 0.32s ease,
+    box-shadow 0.32s ease,
+    border-color 0.32s ease;
+  animation: revealUp 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--motion-delay, 0ms);
+}
+
+.card::before,
+.statCard::before,
+.macroCard::before,
+.editorCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 42%),
+    radial-gradient(circle at top right, rgba(79, 131, 255, 0.08), transparent 32%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.card:hover,
+.statCard:hover,
+.macroCard:hover,
+.editorCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 26px 72px rgba(54, 94, 118, 0.16);
 }
 
 .card {
@@ -223,6 +327,29 @@
   padding: 1.2rem;
 }
 
+.statCard::after,
+.macroCard::after {
+  content: "";
+  position: absolute;
+  right: -2.4rem;
+  bottom: -2.4rem;
+  width: 8rem;
+  height: 8rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 131, 255, 0.12), transparent 68%);
+  opacity: 0.9;
+  transition:
+    transform 0.32s ease,
+    opacity 0.32s ease;
+  pointer-events: none;
+}
+
+.statCard:hover::after,
+.macroCard:hover::after {
+  transform: translate3d(-10px, -10px, 0) scale(1.08);
+  opacity: 1;
+}
+
 .statLabel {
   display: block;
   color: var(--text-soft);
@@ -264,12 +391,14 @@
   transition:
     opacity 0.2s ease,
     transform 0.2s ease,
-    background 0.2s ease;
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .resetButton:hover:not(:disabled) {
   transform: translateY(-1px);
   background: #dce9ff;
+  box-shadow: 0 12px 24px rgba(79, 131, 255, 0.16);
 }
 
 .resetButton:disabled {
@@ -369,6 +498,7 @@
   height: 12px;
   border-radius: 999px;
   box-shadow: 0 0 0 6px rgba(79, 131, 255, 0.06);
+  animation: softFloat 4.8s ease-in-out infinite;
 }
 
 .editorControls {
@@ -387,6 +517,19 @@
   min-height: 52px;
   font-size: 1.5rem;
   cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.stepButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(54, 94, 118, 0.12);
+}
+
+.stepButton:active {
+  transform: translateY(0);
 }
 
 .servingInput {
@@ -452,6 +595,7 @@
   width: min(100%, 240px);
   aspect-ratio: 1 / 1;
   border-radius: 50%;
+  animation: chartBloom 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .donutCenter {
@@ -462,6 +606,7 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: inset 0 0 0 1px rgba(88, 131, 148, 0.1);
+  animation: centerPulse 4.2s ease-in-out 0.9s infinite;
 }
 
 .donutCenter strong {
@@ -487,6 +632,18 @@
   align-items: center;
 }
 
+.legendItem:nth-child(1) {
+  animation: revealUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+}
+
+.legendItem:nth-child(2) {
+  animation: revealUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
+}
+
+.legendItem:nth-child(3) {
+  animation: revealUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
+}
+
 .legendItem p {
   margin: 0.18rem 0 0;
   color: var(--text-soft);
@@ -507,6 +664,8 @@
 .barRow {
   display: grid;
   gap: 0.55rem;
+  animation: revealUp 0.64s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--motion-delay, 0ms);
 }
 
 .barLabels {
@@ -538,6 +697,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
+  transition: width 0.75s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .barTarget {
@@ -578,6 +738,10 @@
   background: rgba(243, 249, 251, 0.82);
 }
 
+.table tbody tr {
+  transition: background 0.22s ease;
+}
+
 .table tfoot td {
   border-bottom: 0;
   background: rgba(243, 249, 251, 0.94);
@@ -603,6 +767,8 @@
   padding: 1rem 1.2rem;
   color: var(--text-main);
   line-height: 1.75;
+  animation: revealUp 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--motion-delay, 0ms);
 }
 
 @media (max-width: 1120px) {
@@ -670,5 +836,16 @@
 
   .editorControls {
     grid-template-columns: 46px 1fr 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .page *,
+  .page *::before,
+  .page *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

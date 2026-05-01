@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import styles from "./calculation-principles.module.css";
 import { NutritionSiteNavigation } from "./site-navigation";
@@ -18,6 +18,12 @@ function formatValue(value: number, digits = 0) {
 
 function roundDisplay(value: number) {
   return Math.round(value);
+}
+
+function buildMotionStyle(delayMs: number): CSSProperties {
+  return {
+    "--motion-delay": `${delayMs}ms`,
+  } as CSSProperties;
 }
 
 const STEP_CARDS = [
@@ -118,7 +124,7 @@ export function CalculationPrinciplesPage() {
         </p>
 
         <div className={styles.heroFacts}>
-          <article className={styles.factCard}>
+          <article className={styles.factCard} style={buildMotionStyle(140)}>
             <span>目前範例</span>
             <strong>
               {profile.heightCm} cm / {profile.weightKg} kg
@@ -127,7 +133,7 @@ export function CalculationPrinciplesPage() {
               {sexLabel} ・ {activityLabel} ・ {example.goalLabel}
             </p>
           </article>
-          <article className={styles.factCard}>
+          <article className={styles.factCard} style={buildMotionStyle(210)}>
             <span>估算熱量</span>
             <strong>{example.targetCalories} kcal</strong>
             <p>
@@ -135,7 +141,7 @@ export function CalculationPrinciplesPage() {
               {example.goalLabel === "減脂" ? 25 : example.goalLabel === "增肌" ? 35 : 30}
             </p>
           </article>
-          <article className={styles.factCard}>
+          <article className={styles.factCard} style={buildMotionStyle(280)}>
             <span>使用資料來源</span>
             <strong>{hasStoredProfile ? "讀取網站目前輸入" : "固定教學範例"}</strong>
             <p>
@@ -155,8 +161,12 @@ export function CalculationPrinciplesPage() {
           </div>
 
           <div className={styles.stepsGrid}>
-            {STEP_CARDS.map((card) => (
-              <article key={card.step} className={styles.stepCard}>
+            {STEP_CARDS.map((card, index) => (
+              <article
+                key={card.step}
+                className={styles.stepCard}
+                style={buildMotionStyle(180 + index * 70)}
+              >
                 <div className={styles.stepTop}>
                   <span className={styles.stepNumber}>{card.step}</span>
                   <h3>{card.title}</h3>
@@ -173,7 +183,7 @@ export function CalculationPrinciplesPage() {
           </div>
         </section>
 
-        <section className={styles.sectionCard}>
+        <section className={styles.sectionCard} style={buildMotionStyle(260)}>
           <div className={styles.sectionHeading}>
             <span className={styles.eyebrow}>食物代換表</span>
             <h2>每一份大概提供多少營養素</h2>
@@ -212,20 +222,24 @@ export function CalculationPrinciplesPage() {
           </div>
 
           <div className={styles.formulaGrid}>
-            {SERVING_FORMULAS.map((item) => (
-              <article key={item.label} className={styles.miniCard}>
+            {SERVING_FORMULAS.map((item, index) => (
+              <article
+                key={item.label}
+                className={styles.miniCard}
+                style={buildMotionStyle(300 + index * 45)}
+              >
                 <span className={styles.miniLabel}>{item.label}</span>
                 <strong>{item.formula}</strong>
               </article>
             ))}
           </div>
 
-          <div className={styles.tipBox}>
+          <div className={styles.tipBox} style={buildMotionStyle(420)}>
             這是一種簡化版的估算方式，目的是讓使用者快速理解份數如何由營養素反推而來。實際飲食規劃仍可依照活動量、疾病狀況、飲食習慣與營養師建議調整。
           </div>
         </section>
 
-        <section className={styles.exampleCard}>
+        <section className={styles.exampleCard} style={buildMotionStyle(360)}>
           <div className={styles.exampleHeader}>
             <div>
               <span className={styles.eyebrow}>範例計算</span>
@@ -237,7 +251,7 @@ export function CalculationPrinciplesPage() {
           </div>
 
           <div className={styles.exampleGrid}>
-            <article className={styles.examplePanel}>
+            <article className={styles.examplePanel} style={buildMotionStyle(420)}>
               <h3>1. 每日熱量</h3>
               <p>
                 每日熱量 = {profile.weightKg} ×{" "}
@@ -246,7 +260,7 @@ export function CalculationPrinciplesPage() {
               </p>
             </article>
 
-            <article className={styles.examplePanel}>
+            <article className={styles.examplePanel} style={buildMotionStyle(490)}>
               <h3>2. 三大營養素克數</h3>
               <p>
                 CHO = {example.targetCalories} × 50% ÷ 4 = 約{" "}
@@ -262,7 +276,7 @@ export function CalculationPrinciplesPage() {
               </p>
             </article>
 
-            <article className={styles.examplePanel}>
+            <article className={styles.examplePanel} style={buildMotionStyle(560)}>
               <h3>3. 建議份數示範</h3>
               <p>
                 全穀根莖類 = {formatValue(example.macroGrams.cho, 1)} × 60% ÷ 15 = 約{" "}
@@ -287,12 +301,12 @@ export function CalculationPrinciplesPage() {
             </article>
           </div>
 
-          <div className={styles.warningBox}>
+          <div className={styles.warningBox} style={buildMotionStyle(620)}>
             此為公式反推的理論值，實際網站可依照健康飲食原則與一般飲食習慣進行份數修正，避免份數過高或不符合日常飲食。
           </div>
         </section>
 
-        <section className={styles.summaryBand}>
+        <section className={styles.summaryBand} style={buildMotionStyle(680)}>
           先估算熱量 → 分配營養素比例 → 換算成克數 → 用食物代換表反推每日建議份數。
         </section>
       </section>
