@@ -418,6 +418,14 @@
   animation-delay: 240ms;
 }
 
+.foodSparkle:nth-child(2)::before {
+  width: 1.05rem;
+}
+
+.foodSparkle:nth-child(2)::after {
+  height: 1.05rem;
+}
+
 .groupHeader {
   display: flex;
   align-items: flex-start;
