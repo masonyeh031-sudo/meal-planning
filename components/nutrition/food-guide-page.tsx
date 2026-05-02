@@ -7,6 +7,42 @@ import styles from "./food-guide-page.module.css";
 import { NutritionSiteNavigation } from "./site-navigation";
 import { FOOD_GUIDE_ITEMS } from "@/lib/food-guide";
 
+const FOOD_DECORATIONS: Record<
+  (typeof FOOD_GUIDE_ITEMS)[number]["id"],
+  { hero: string; orbit: string[]; sparkles: string[] }
+> = {
+  grains: {
+    hero: "🍚",
+    orbit: ["🍞", "🌽", "🥣"],
+    sparkles: ["✨", "🌾"],
+  },
+  protein: {
+    hero: "🥩",
+    orbit: ["🥚", "🐟", "🧃"],
+    sparkles: ["✨", "💪"],
+  },
+  fruits: {
+    hero: "🍎",
+    orbit: ["🍌", "🥝", "🍊"],
+    sparkles: ["✨", "🌼"],
+  },
+  vegetables: {
+    hero: "🥦",
+    orbit: ["🥬", "🥕", "🍄"],
+    sparkles: ["✨", "🌿"],
+  },
+  dairy: {
+    hero: "🥛",
+    orbit: ["🧀", "🍶", "🥣"],
+    sparkles: ["✨", "🫧"],
+  },
+  fats: {
+    hero: "🥜",
+    orbit: ["🥑", "🫒", "🥄"],
+    sparkles: ["✨", "🌰"],
+  },
+};
+
 function buildMotionStyle(delayMs: number): CSSProperties {
   return {
     "--motion-delay": `${delayMs}ms`,
@@ -20,6 +56,8 @@ function FoodGroupGuideCard({
   index: number;
   item: (typeof FOOD_GUIDE_ITEMS)[number];
 }) {
+  const decoration = FOOD_DECORATIONS[item.id];
+
   return (
     <article
       className={styles.groupCard}
@@ -32,42 +70,84 @@ function FoodGroupGuideCard({
         } as CSSProperties
       }
     >
-      <div className={styles.groupHeader}>
-        <span className={styles.groupBadge}>{item.badge}</span>
-        <div>
-          <h2>{item.title}</h2>
-          <p>{item.roleDescription}</p>
+      <div className={styles.groupVisual}>
+        <div className={styles.groupVisualGlow} />
+        <div className={styles.groupVisualOrbit} />
+        <div className={styles.foodScene} aria-hidden="true">
+          <span className={styles.foodHeroIcon}>{decoration.hero}</span>
+          <div className={styles.foodOrbitIcons}>
+            {decoration.orbit.map((icon, orbitIndex) => (
+              <span
+                key={`${item.id}-${icon}`}
+                className={styles.foodOrbitIcon}
+                style={{ ["--orbit-index" as string]: orbitIndex } as CSSProperties}
+              >
+                {icon}
+              </span>
+            ))}
+          </div>
+          <div className={styles.foodSparkles}>
+            {decoration.sparkles.map((icon, sparkleIndex) => (
+              <span
+                key={`${item.id}-sparkle-${icon}`}
+                className={styles.foodSparkle}
+                style={{ ["--sparkle-index" as string]: sparkleIndex } as CSSProperties}
+              >
+                {icon}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className={styles.groupHeader}>
+          <span className={styles.groupBadge}>{item.badge}</span>
+          <div>
+            <h2>{item.title}</h2>
+            <p>{item.roleDescription}</p>
+          </div>
+        </div>
+        <div className={styles.groupHeroNote}>
+          <span className={styles.sectionTag}>快速記法</span>
+          <strong>{item.quickLook}</strong>
+        </div>
+        <div className={styles.groupStickers}>
+          <span className={styles.sticker}>{item.commonExchanges[0]}</span>
+          <span className={styles.sticker}>{item.commonExchanges[1]}</span>
+          <span className={styles.sticker}>{item.easyReads[0]}</span>
         </div>
       </div>
 
-      <section className={styles.groupSection}>
-        <span className={styles.sectionTag}>1 份大概是</span>
-        <strong className={styles.sectionHighlight}>{item.servingHighlight}</strong>
-      </section>
+      <div className={styles.groupContent}>
+        <section className={styles.groupSection}>
+          <span className={styles.sectionTag}>1 份大概是</span>
+          <strong className={styles.sectionHighlight}>{item.servingHighlight}</strong>
+        </section>
 
-      <section className={styles.groupSection}>
-        <span className={styles.sectionTag}>常見替換食物</span>
-        <div className={styles.chipList}>
-          {item.commonExchanges.map((line) => (
-            <span key={line} className={styles.chip}>
-              {line}
-            </span>
-          ))}
+        <section className={styles.groupSection}>
+          <span className={styles.sectionTag}>常見替換食物</span>
+          <div className={styles.chipList}>
+            {item.commonExchanges.map((line) => (
+              <span key={line} className={styles.chip}>
+                {line}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <div className={styles.groupBottomGrid}>
+          <section className={styles.groupSection}>
+            <span className={styles.sectionTag}>怎麼記最簡單</span>
+            <ul className={styles.readList}>
+              {item.easyReads.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+
+          <div className={styles.reminderBubble}>
+            <span>小提醒</span>
+            <p>{item.reminder}</p>
+          </div>
         </div>
-      </section>
-
-      <section className={styles.groupSection}>
-        <span className={styles.sectionTag}>怎麼記最簡單</span>
-        <ul className={styles.readList}>
-          {item.easyReads.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      </section>
-
-      <div className={styles.reminderBubble}>
-        <span>小提醒</span>
-        <p>{item.reminder}</p>
       </div>
     </article>
   );
