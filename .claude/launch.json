@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "meal-planning-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:local"],
+      "port": 3000,
+      "cwd": "/Users/masonyeh/Documents/codex/meal-planning"
+    }
+  ]
+}

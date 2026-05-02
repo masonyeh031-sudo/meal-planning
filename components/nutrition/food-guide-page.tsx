@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import type { CSSProperties } from "react";
 
 import styles from "./food-guide-page.module.css";
 import { NutritionSiteNavigation } from "./site-navigation";
-import { FOOD_GUIDE_ITEMS } from "@/lib/food-guide";
 
 type FoodIconVariant =
   | "riceBowl"
@@ -27,41 +25,86 @@ type FoodIconVariant =
   | "avocado"
   | "oilBottle";
 
-const FOOD_DECORATIONS: Record<
-  (typeof FOOD_GUIDE_ITEMS)[number]["id"],
-  { hero: FoodIconVariant; orbit: FoodIconVariant[]; sparkles: number[] }
-> = {
-  grains: {
+interface FoodGroup {
+  id: string;
+  title: string;
+  tag: string;
+  description: string;
+  examples: string[];
+  hero: FoodIconVariant;
+  companions: FoodIconVariant[];
+  accentColor: string;
+  softColor: string;
+}
+
+const FOOD_GROUPS: FoodGroup[] = [
+  {
+    id: "grains",
+    title: "全穀雜糧類",
+    tag: "能量來源",
+    description: "提供身體主要的能量，是每天活力的基礎。",
+    examples: ["白飯", "地瓜", "燕麥", "吐司", "麵"],
     hero: "riceBowl",
-    orbit: ["toast", "corn", "riceBowl"],
-    sparkles: [0, 1],
+    companions: ["toast", "corn"],
+    accentColor: "#f2b575",
+    softColor: "#fff4e6",
   },
-  protein: {
+  {
+    id: "protein",
+    title: "豆魚蛋肉類",
+    tag: "蛋白質來源",
+    description: "幫助肌肉生長、修復身體並維持體力。",
+    examples: ["雞胸肉", "魚", "雞蛋", "豆腐", "豆漿"],
     hero: "meat",
-    orbit: ["egg", "fish", "milk"],
-    sparkles: [0, 1],
+    companions: ["egg", "fish"],
+    accentColor: "#f29b8f",
+    softColor: "#fff0ec",
   },
-  fruits: {
-    hero: "apple",
-    orbit: ["banana", "apple", "citrus"],
-    sparkles: [0, 1],
-  },
-  vegetables: {
-    hero: "broccoli",
-    orbit: ["leafy", "carrot", "broccoli"],
-    sparkles: [0, 1],
-  },
-  dairy: {
+  {
+    id: "dairy",
+    title: "乳品類",
+    tag: "鈣質來源",
+    description: "提供豐富蛋白質與鈣質，幫助骨骼健康。",
+    examples: ["牛奶", "起司", "優格", "優酪乳"],
     hero: "milk",
-    orbit: ["cheese", "yogurt", "milk"],
-    sparkles: [0, 1],
+    companions: ["cheese", "yogurt"],
+    accentColor: "#8fb8ff",
+    softColor: "#edf5ff",
   },
-  fats: {
+  {
+    id: "vegetables",
+    title: "蔬菜類",
+    tag: "維生素 & 纖維",
+    description: "提供維生素、礦物質與纖維，每天都要吃足。",
+    examples: ["高麗菜", "花椰菜", "菠菜", "番茄", "胡蘿蔔"],
+    hero: "broccoli",
+    companions: ["leafy", "carrot"],
+    accentColor: "#88c98d",
+    softColor: "#eef9ef",
+  },
+  {
+    id: "fruits",
+    title: "水果類",
+    tag: "維生素補充",
+    description: "提供維生素與天然糖分，補充每日活力。",
+    examples: ["蘋果", "香蕉", "芭樂", "橘子", "奇異果"],
+    hero: "apple",
+    companions: ["banana", "citrus"],
+    accentColor: "#ffb76e",
+    softColor: "#fff4e7",
+  },
+  {
+    id: "fats",
+    title: "油脂與堅果種子類",
+    tag: "好油脂",
+    description: "提供必需脂肪酸，幫助身體運作，份量少少就夠。",
+    examples: ["杏仁", "核桃", "花生", "酪梨", "橄欖油"],
     hero: "nuts",
-    orbit: ["avocado", "oilBottle", "nuts"],
-    sparkles: [0, 1],
+    companions: ["avocado", "oilBottle"],
+    accentColor: "#d3b98c",
+    softColor: "#f8f2e8",
   },
-};
+];
 
 function CuteFace({
   eyeY = 57,
@@ -83,13 +126,7 @@ function CuteFace({
   );
 }
 
-function FoodIcon({
-  variant,
-  className,
-}: {
-  variant: FoodIconVariant;
-  className?: string;
-}) {
+function FoodIcon({ variant, className }: { variant: FoodIconVariant; className?: string }) {
   switch (variant) {
     case "riceBowl":
       return (
@@ -254,109 +291,43 @@ function FoodIcon({
   }
 }
 
-function buildMotionStyle(delayMs: number): CSSProperties {
-  return {
-    "--motion-delay": `${delayMs}ms`,
+function FoodGroupCard({ group, index }: { group: FoodGroup; index: number }) {
+  const cardStyle = {
+    "--accent-color": group.accentColor,
+    "--soft-color": group.softColor,
+    "--motion-delay": `${120 + index * 80}ms`,
   } as CSSProperties;
-}
-
-function FoodGroupGuideCard({
-  index,
-  item,
-}: {
-  index: number;
-  item: (typeof FOOD_GUIDE_ITEMS)[number];
-}) {
-  const decoration = FOOD_DECORATIONS[item.id];
 
   return (
-    <article
-      className={styles.groupCard}
-      style={
-        {
-          "--accent-color": item.accentColor,
-          "--soft-color": item.softColor,
-          "--motion-delay": `${220 + index * 65}ms`,
-          borderColor: `${item.accentColor}26`,
-        } as CSSProperties
-      }
-    >
-      <div className={styles.groupVisual}>
-        <div className={styles.groupVisualGlow} />
-        <div className={styles.groupVisualOrbit} />
-        <div className={styles.foodScene} aria-hidden="true">
-          <div className={styles.foodHeroIcon}>
-            <FoodIcon variant={decoration.hero} className={styles.foodIconSvg} />
-          </div>
-          <div className={styles.foodOrbitIcons}>
-            {decoration.orbit.map((icon) => (
-              <div
-                key={`${item.id}-${icon}`}
-                className={styles.foodOrbitIcon}
-              >
-                <FoodIcon variant={icon} className={styles.foodIconSvg} />
-              </div>
-            ))}
-          </div>
-          <div className={styles.foodSparkles}>
-            {decoration.sparkles.map((sparkleIndex) => (
-              <span
-                key={`${item.id}-sparkle-${sparkleIndex}`}
-                className={styles.foodSparkle}
-                style={{ ["--sparkle-index" as string]: sparkleIndex } as CSSProperties}
-              />
-            ))}
-          </div>
+    <article className={styles.card} style={cardStyle}>
+      <div className={styles.cardTag}>{group.tag}</div>
+
+      <div className={styles.iconRow} aria-hidden="true">
+        <div className={`${styles.iconBubble} ${styles.iconBubbleHero}`}>
+          <FoodIcon variant={group.hero} className={styles.iconSvg} />
         </div>
-        <div className={styles.groupHeader}>
-          <span className={styles.groupBadge}>{item.badge}</span>
-          <div>
-            <h2>{item.title}</h2>
-            <p>{item.roleDescription}</p>
+        {group.companions.map((variant, i) => (
+          <div
+            key={variant}
+            className={`${styles.iconBubble} ${styles.iconBubbleSmall}`}
+            style={{ "--bubble-index": i } as CSSProperties}
+          >
+            <FoodIcon variant={variant} className={styles.iconSvg} />
           </div>
-        </div>
-        <div className={styles.groupHeroNote}>
-          <span className={styles.sectionTag}>快速記法</span>
-          <strong>{item.quickLook}</strong>
-        </div>
-        <div className={styles.groupStickers}>
-          <span className={styles.sticker}>{item.commonExchanges[0]}</span>
-          <span className={styles.sticker}>{item.commonExchanges[1]}</span>
-          <span className={styles.sticker}>{item.easyReads[0]}</span>
-        </div>
+        ))}
       </div>
 
-      <div className={styles.groupContent}>
-        <section className={styles.groupSection}>
-          <span className={styles.sectionTag}>1 份大概是</span>
-          <strong className={styles.sectionHighlight}>{item.servingHighlight}</strong>
-        </section>
+      <h2 className={styles.cardTitle}>{group.title}</h2>
+      <p className={styles.cardDescription}>{group.description}</p>
 
-        <section className={styles.groupSection}>
-          <span className={styles.sectionTag}>常見替換食物</span>
-          <div className={styles.chipList}>
-            {item.commonExchanges.map((line) => (
-              <span key={line} className={styles.chip}>
-                {line}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        <div className={styles.groupBottomGrid}>
-          <section className={styles.groupSection}>
-            <span className={styles.sectionTag}>怎麼記最簡單</span>
-            <ul className={styles.readList}>
-              {item.easyReads.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </section>
-
-          <div className={styles.reminderBubble}>
-            <span>小提醒</span>
-            <p>{item.reminder}</p>
-          </div>
+      <div className={styles.examples}>
+        <span className={styles.examplesLabel}>常見食物</span>
+        <div className={styles.chipList}>
+          {group.examples.map((example) => (
+            <span key={example} className={styles.chip}>
+              {example}
+            </span>
+          ))}
         </div>
       </div>
     </article>
@@ -366,92 +337,41 @@ function FoodGroupGuideCard({
 export function FoodGuidePage() {
   return (
     <main className={styles.page}>
-      <div className={styles.pageGlow} />
       <NutritionSiteNavigation />
 
       <section className={styles.hero}>
-        <div className={styles.heroBadge}>Food Portion Guide</div>
-        <h1 className={styles.title}>六大類食物指南</h1>
-        <p className={styles.description}>
-          用最簡單的方式，帶你看懂每天該怎麼吃。從飯碗、掌心、拳頭、杯子到小茶匙，把抽象的份數變成日常看得懂的份量。
-        </p>
-
-        <div className={styles.heroFacts}>
-          <article className={styles.factCard} style={buildMotionStyle(120)}>
-            <span>先記 1 份</span>
-            <strong>比背公克更容易</strong>
-            <p>把每一類先記成碗、片、掌心、拳頭與小茶匙。</p>
-          </article>
-          <article className={styles.factCard} style={buildMotionStyle(190)}>
-            <span>可互相替換</span>
-            <strong>不是只能吃同一種</strong>
-            <p>飯可以換吐司，牛奶也能換優格，重點是抓到份量概念。</p>
-          </article>
-          <article className={styles.factCard} style={buildMotionStyle(260)}>
-            <span>外食也能估</span>
-            <strong>用眼睛就能先抓方向</strong>
-            <p>看到主食、主菜、青菜、飲品時，就能先用生活化方式判斷。</p>
-          </article>
+        <div className={styles.heroDecorations} aria-hidden="true">
+          <span className={`${styles.heroDecoration} ${styles.heroDecorationOne}`}>
+            <FoodIcon variant="riceBowl" className={styles.iconSvg} />
+          </span>
+          <span className={`${styles.heroDecoration} ${styles.heroDecorationTwo}`}>
+            <FoodIcon variant="apple" className={styles.iconSvg} />
+          </span>
+          <span className={`${styles.heroDecoration} ${styles.heroDecorationThree}`}>
+            <FoodIcon variant="milk" className={styles.iconSvg} />
+          </span>
+          <span className={`${styles.heroDecoration} ${styles.heroDecorationFour}`}>
+            <FoodIcon variant="broccoli" className={styles.iconSvg} />
+          </span>
         </div>
+
+        <span className={styles.heroBadge}>Six Food Groups</span>
+        <h1 className={styles.heroTitle}>六大類食物指南</h1>
+        <p className={styles.heroSubtitle}>
+          用簡單清楚的方式，帶你認識每天飲食中不可缺少的六大類食物。
+        </p>
       </section>
 
-      <section className={styles.content}>
-        <section className={styles.quickSection}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span className={styles.eyebrow}>快速總覽</span>
-              <h2>先記住這 6 個最常用的份量</h2>
-            </div>
-            <Link href="/" className={styles.inlineLink}>
-              回到飲食計算器
-            </Link>
-          </div>
+      <section className={styles.cardGrid}>
+        {FOOD_GROUPS.map((group, index) => (
+          <FoodGroupCard key={group.id} group={group} index={index} />
+        ))}
+      </section>
 
-          <div className={styles.quickGrid}>
-            {FOOD_GUIDE_ITEMS.map((item, index) => (
-              <article
-                key={item.id}
-                className={styles.quickCard}
-                style={
-                  {
-                    "--accent-color": item.accentColor,
-                    "--soft-color": item.softColor,
-                    "--motion-delay": `${170 + index * 45}ms`,
-                  } as CSSProperties
-                }
-              >
-                <span className={styles.quickBadge}>{item.badge}</span>
-                <strong>{item.title}</strong>
-                <p>{item.quickLook}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.guidesSection}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span className={styles.eyebrow}>六大類主卡片</span>
-              <h2>把 1 份換成看得懂的日常份量</h2>
-            </div>
-          </div>
-
-          <div className={styles.guidesGrid}>
-            {FOOD_GUIDE_ITEMS.map((item, index) => (
-              <FoodGroupGuideCard key={item.id} item={item} index={index} />
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.footerCard} style={buildMotionStyle(640)}>
-          <div>
-            <span className={styles.eyebrow}>貼心提醒</span>
-            <h2>份量是教學估算，不是唯一答案</h2>
-          </div>
-          <p>
-            每個人的需求會依年齡、活動量、健康狀況與飲食習慣不同而調整。這一頁的份量主要是幫助你先建立生活化概念，如果有特殊需求，仍建議依營養師或醫師建議調整。
-          </p>
-        </section>
+      <section className={styles.footerNote}>
+        <p>
+          均衡飲食的重點是「每一類都吃到」，不需要每天分量完全一樣。先把六大類認得清楚，再慢慢調整成適合自己的份量就好。
+        </p>
       </section>
     </main>
   );
