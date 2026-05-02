@@ -33,6 +33,9 @@ interface FoodGroup {
   examples: string[];
   hero: FoodIconVariant;
   companions: FoodIconVariant[];
+  handBadge: string;
+  handMeasure: string;
+  quickLook: string;
   accentColor: string;
   softColor: string;
 }
@@ -46,6 +49,9 @@ const FOOD_GROUPS: FoodGroup[] = [
     examples: ["白飯", "地瓜", "燕麥", "吐司", "麵"],
     hero: "riceBowl",
     companions: ["toast", "corn"],
+    handBadge: "飯",
+    handMeasure: "飯約 1/4 到 1/2 碗",
+    quickLook: "1 份 ≈ 飯 1/4 碗 / 吐司 1 片",
     accentColor: "#f2b575",
     softColor: "#fff4e6",
   },
@@ -57,6 +63,9 @@ const FOOD_GROUPS: FoodGroup[] = [
     examples: ["雞胸肉", "魚", "雞蛋", "豆腐", "豆漿"],
     hero: "meat",
     companions: ["egg", "fish"],
+    handBadge: "掌",
+    handMeasure: "約 1 掌心",
+    quickLook: "1 份 ≈ 1 掌心肉 / 1 顆蛋",
     accentColor: "#f29b8f",
     softColor: "#fff0ec",
   },
@@ -68,6 +77,9 @@ const FOOD_GROUPS: FoodGroup[] = [
     examples: ["牛奶", "起司", "優格", "優酪乳"],
     hero: "milk",
     companions: ["cheese", "yogurt"],
+    handBadge: "杯",
+    handMeasure: "約 1 杯",
+    quickLook: "1 份 ≈ 牛奶 1 杯 / 優格 1 盒",
     accentColor: "#8fb8ff",
     softColor: "#edf5ff",
   },
@@ -79,6 +91,9 @@ const FOOD_GROUPS: FoodGroup[] = [
     examples: ["高麗菜", "花椰菜", "菠菜", "番茄", "胡蘿蔔"],
     hero: "broccoli",
     companions: ["leafy", "carrot"],
+    handBadge: "碗",
+    handMeasure: "熟菜約 1/2 碗",
+    quickLook: "1 份 ≈ 熟菜 1/2 碗",
     accentColor: "#88c98d",
     softColor: "#eef9ef",
   },
@@ -90,6 +105,9 @@ const FOOD_GROUPS: FoodGroup[] = [
     examples: ["蘋果", "香蕉", "芭樂", "橘子", "奇異果"],
     hero: "apple",
     companions: ["banana", "citrus"],
+    handBadge: "拳",
+    handMeasure: "約 1 拳頭",
+    quickLook: "1 份 ≈ 1 拳頭水果",
     accentColor: "#ffb76e",
     softColor: "#fff4e7",
   },
@@ -101,6 +119,9 @@ const FOOD_GROUPS: FoodGroup[] = [
     examples: ["杏仁", "核桃", "花生", "酪梨", "橄欖油"],
     hero: "nuts",
     companions: ["avocado", "oilBottle"],
+    handBadge: "匙",
+    handMeasure: "約 1 茶匙",
+    quickLook: "1 份 ≈ 1 茶匙油 / 1 湯匙堅果",
     accentColor: "#d3b98c",
     softColor: "#f8f2e8",
   },
@@ -320,6 +341,23 @@ function FoodGroupCard({ group, index }: { group: FoodGroup; index: number }) {
       <h2 className={styles.cardTitle}>{group.title}</h2>
       <p className={styles.cardDescription}>{group.description}</p>
 
+      <div className={styles.portionStrip}>
+        <div className={styles.portionItem}>
+          <span className={styles.portionBadge}>{group.handBadge}</span>
+          <div>
+            <span className={styles.portionLabel}>手掌估算</span>
+            <strong>{group.handMeasure}</strong>
+          </div>
+        </div>
+        <div className={styles.portionDivider} aria-hidden="true" />
+        <div className={styles.portionItem}>
+          <div>
+            <span className={styles.portionLabel}>份量翻譯</span>
+            <strong>{group.quickLook}</strong>
+          </div>
+        </div>
+      </div>
+
       <div className={styles.examples}>
         <span className={styles.examplesLabel}>常見食物</span>
         <div className={styles.chipList}>
@@ -368,11 +406,9 @@ export function FoodGuidePage() {
         ))}
       </section>
 
-      <section className={styles.footerNote}>
-        <p>
-          均衡飲食的重點是「每一類都吃到」，不需要每天分量完全一樣。先把六大類認得清楚，再慢慢調整成適合自己的份量就好。
-        </p>
-      </section>
+      <p className={styles.footerNote}>
+        均衡飲食的重點是「每一類都吃到」，先把六大類認得清楚，再調整成適合自己的份量就好。
+      </p>
     </main>
   );
 }
