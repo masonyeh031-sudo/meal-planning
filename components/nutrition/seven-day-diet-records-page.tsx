@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 
 import styles from "./seven-day-diet-records.module.css";
+import { CalculatorSuggestionPanel } from "./calculator-suggestion-panel";
 import { NutritionSiteNavigation } from "./site-navigation";
 import {
   DIET_RECORD_CATEGORIES,
@@ -608,6 +609,8 @@ export function SevenDayDietRecordsPage() {
             </p>
           ) : null}
         </section>
+
+        <CalculatorSuggestionPanel />
 
         <section className={styles.dayCard} style={buildMotionStyle(240)}>
           <div className={styles.dayHeader}>
