@@ -287,14 +287,15 @@ function buildPayload(input: DietComparisonExportInput): DietComparisonExportPay
     dateStyle: "medium",
     timeStyle: "short",
   }).format(now);
+  const nutritionProfile = input.nutritionProfile;
 
   const goalLabel =
-    input.nutritionProfile !== null
-      ? GOAL_OPTIONS.find((option) => option.value === input.nutritionProfile.goal)?.label ?? "維持"
+    nutritionProfile !== null
+      ? GOAL_OPTIONS.find((option) => option.value === nutritionProfile.goal)?.label ?? "維持"
       : "未設定";
   const profileLabel =
-    input.nutritionProfile !== null
-      ? `${input.nutritionProfile.heightCm} cm / ${input.nutritionProfile.weightKg} kg / ${goalLabel}`
+    nutritionProfile !== null
+      ? `${nutritionProfile.heightCm} cm / ${nutritionProfile.weightKg} kg / ${goalLabel}`
       : "尚未連接個人資料";
 
   return {
