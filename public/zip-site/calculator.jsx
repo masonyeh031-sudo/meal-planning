@@ -167,6 +167,192 @@ function Dashboard({ rec, summary, profile, calorieDelta }) {
   );
 }
 
+function FormulaShowcase({ profile, rec, embedded = false }) {
+  const goal = _N.GOAL_OPTIONS.find(g => g.value === profile.goal) || _N.GOAL_OPTIONS[1];
+  const sex = _N.SEX_OPTIONS.find(s => s.value === profile.sex) || _N.SEX_OPTIONS[0];
+  const activity = _N.ACTIVITY_OPTIONS.find(a => a.value === profile.activity) || _N.ACTIVITY_OPTIONS[1];
+
+  const choG = Math.round(rec.target * 0.5 / 4);
+  const proG = Math.round(rec.target * 0.25 / 4);
+  const fatG = Math.round(rec.target * 0.25 / 9);
+
+  const theoryServings = {
+    grains: _N.roundHalf(choG * 0.6 / 15),
+    fruits: _N.roundHalf(choG * 0.2 / 15),
+    vegetables: _N.roundHalf(choG * 0.2 / 5),
+    protein: _N.roundHalf(proG / 7),
+    dairy: rec.recommended.dairy,
+    fats: _N.roundHalf(fatG / 5),
+  };
+
+  const servingCards = [
+    {
+      id: "grains",
+      icon: "🍚",
+      label: "全穀雜糧類",
+      formula: `${choG} × 60% ÷ 15`,
+      theory: theoryServings.grains,
+      current: rec.recommended.grains,
+    },
+    {
+      id: "fruits",
+      icon: "🍎",
+      label: "水果類",
+      formula: `${choG} × 20% ÷ 15`,
+      theory: theoryServings.fruits,
+      current: rec.recommended.fruits,
+    },
+    {
+      id: "vegetables",
+      icon: "🥦",
+      label: "蔬菜類",
+      formula: `${choG} × 20% ÷ 5`,
+      theory: theoryServings.vegetables,
+      current: rec.recommended.vegetables,
+    },
+    {
+      id: "protein",
+      icon: "🥚",
+      label: "豆魚蛋肉類",
+      formula: `${proG} ÷ 7`,
+      theory: theoryServings.protein,
+      current: rec.recommended.protein,
+    },
+    {
+      id: "dairy",
+      icon: "🥛",
+      label: "乳品類",
+      formula: "固定 1～2 份",
+      theory: theoryServings.dairy,
+      current: rec.recommended.dairy,
+    },
+    {
+      id: "fats",
+      icon: "🥜",
+      label: "油脂與堅果種子類",
+      formula: `${fatG} ÷ 5`,
+      theory: theoryServings.fats,
+      current: rec.recommended.fats,
+    },
+  ].map((item) => {
+    const guide = _N.FOOD_GUIDE.find(g => g.id === item.id);
+    return {
+      ...item,
+      portion: guide?.portion || "",
+      tip: guide?.tip || "",
+    };
+  });
+
+  const summaryCards = [
+    { label: "身高", value: `${profile.heightCm}`, meta: "cm" },
+    { label: "體重", value: `${profile.weightKg}`, meta: "kg" },
+    { label: "目標", value: goal.label, meta: `× ${goal.factor} kcal` },
+    { label: "活動量", value: activity.label.replace(/（.*?）/g, ""), meta: sex.label.replace(/[♂♀]/g, "").trim() },
+    { label: "BMI", value: rec.bmi.toFixed(1), meta: rec.bmiStatus },
+    { label: "建議熱量", value: `${rec.target}`, meta: "kcal / day" },
+  ];
+
+  return (
+    <article className={"card formula-showcase" + (embedded ? " is-embedded" : " is-tinted-cream")}>
+      {!embedded ? (
+        <>
+          <div className="card-eyebrow"><span aria-hidden="true">🧠</span>Step 02.5 · 套進公式</div>
+          <h2 className="card-title">把目前資料套進公式</h2>
+          <p className="card-sub">直接把你現在輸入的身高、體重、活動量與目標帶進公式，先看理論值，再看目前計算器的建議份數。</p>
+        </>
+      ) : null}
+
+      <div className="formula-overview">
+        {summaryCards.map((item) => (
+          <article key={item.label} className="formula-pill">
+            <span className="formula-pill-label">{item.label}</span>
+            <strong className="formula-pill-value">{item.value}</strong>
+            <span className="formula-pill-meta">{item.meta}</span>
+          </article>
+        ))}
+      </div>
+
+      <div className="formula-board">
+        <article className="formula-stage is-current">
+          <span className="formula-stage-kicker">目前資料</span>
+          <h3 className="formula-stage-title">先把現在的輸入整理好</h3>
+          <div className="formula-identity">
+            <span>{profile.heightCm} cm</span>
+            <span>{profile.weightKg} kg</span>
+            <span>{goal.label}</span>
+          </div>
+          <p className="formula-stage-copy">
+            目前會讀取你在飲食計算器填寫的資料，包含 {sex.label.replace(/[♂♀]/g, "").trim()}、{activity.label} 與飲食目標。
+          </p>
+        </article>
+
+        <article className="formula-stage is-energy">
+          <span className="formula-stage-kicker">1. 每日熱量</span>
+          <h3 className="formula-stage-title">先算今天的熱量目標</h3>
+          <div className="formula-equation">
+            <span className="formula-eq-label">每日熱量</span>
+            <strong>{profile.weightKg} × {goal.factor}</strong>
+            <span className="formula-eq-mark">=</span>
+            <b>{rec.target} kcal</b>
+          </div>
+          <p className="formula-stage-copy">依照你目前的 {goal.label} 目標，先用每公斤體重 {goal.factor} kcal 做簡化估算。</p>
+        </article>
+
+        <article className="formula-stage is-macro">
+          <span className="formula-stage-kicker">2. 三大營養素</span>
+          <h3 className="formula-stage-title">把熱量換算成克數</h3>
+          <div className="formula-macro-lines">
+            <div className="formula-macro-line"><span>CHO</span><code>{rec.target} × 50% ÷ 4</code><b>約 {choG} g</b></div>
+            <div className="formula-macro-line"><span>PRO</span><code>{rec.target} × 25% ÷ 4</code><b>約 {proG} g</b></div>
+            <div className="formula-macro-line"><span>FAT</span><code>{rec.target} × 25% ÷ 9</code><b>約 {fatG} g</b></div>
+          </div>
+          <p className="formula-stage-copy">碳水與蛋白質每克約 4 kcal，脂肪每克約 9 kcal，所以需要先把熱量拆成克數。</p>
+        </article>
+
+        <article className="formula-stage is-serving">
+          <div className="formula-stage-head">
+            <div>
+              <span className="formula-stage-kicker">3. 建議份數</span>
+              <h3 className="formula-stage-title">把克數反推成每天該吃幾份</h3>
+            </div>
+            <div className="formula-note-badge">目前建議值已套用活動量、年齡與 BMI 微調</div>
+          </div>
+
+          <div className="formula-serving-grid">
+            {servingCards.map((item) => (
+              <article key={item.id} className="formula-serving-card">
+                <div className="formula-serving-head">
+                  <span className="formula-serving-icon" aria-hidden="true">{item.icon}</span>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.portion}</span>
+                  </div>
+                </div>
+                <div className="formula-serving-line">公式：<code>{item.formula}</code></div>
+                <div className="formula-serving-results">
+                  <span className="formula-result-chip">理論值 約 {_N.fmt(item.theory)} 份</span>
+                  <span className="formula-result-chip is-current">目前建議 {_N.fmt(item.current)} 份</span>
+                </div>
+                <p className="formula-serving-tip">{item.tip}</p>
+              </article>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      <div className="formula-flow-ribbon">
+        <span className="flow-step">先估算熱量</span>
+        <span className="flow-arrow">→</span>
+        <span className="flow-step">分配營養素比例</span>
+        <span className="flow-arrow">→</span>
+        <span className="flow-step">換算成克數</span>
+        <span className="flow-arrow">→</span>
+        <span className="flow-step">反推每日建議份數</span>
+      </div>
+    </article>
+  );
+}
+
 function ServingsEditor({ servings, setServings, rec }) {
   const set = (id, v) => setServings(s => ({ ...s, [id]: _N.clampServing(id, v) }));
   const isCustom = _N.FOOD_GROUPS.some(g => servings[g.id] !== rec.recommended[g.id]);
@@ -437,6 +623,7 @@ function CalculatorPage({ profile, setProfile, servings, setServings }) {
         <ProfileForm profile={profile} setProfile={setProfile} />
         <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
           <Dashboard rec={rec} summary={summary} profile={profile} calorieDelta={delta} />
+          <FormulaShowcase profile={profile} rec={rec} />
           <ServingsEditor servings={servings} setServings={setServings} rec={rec} />
           <div className="chart-grid">
             <MacroDonut summary={summary} />
@@ -454,3 +641,4 @@ function CalculatorPage({ profile, setProfile, servings, setServings }) {
 }
 
 window.CalculatorPage = CalculatorPage;
+window.FormulaShowcase = FormulaShowcase;

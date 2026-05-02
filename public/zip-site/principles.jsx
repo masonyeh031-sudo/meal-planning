@@ -7,10 +7,6 @@ function PrinciplesPage({ profile }) {
   const sex = _NP.SEX_OPTIONS.find(o => o.value === profile.sex);
   const act = _NP.ACTIVITY_OPTIONS.find(o => o.value === profile.activity);
 
-  const choG = Math.round(rec.target * 0.5 / 4);
-  const proG = Math.round(rec.target * 0.25 / 4);
-  const fatG = Math.round(rec.target * 0.25 / 9);
-
   return (
     <>
       <section className="shell guide-hero">
@@ -152,36 +148,7 @@ function PrinciplesPage({ profile }) {
           <h2 className="section-title">把目前資料套進公式</h2>
           <p className="section-sub">使用 <b>{profile.heightCm} cm / {profile.weightKg} kg / {goal?.label}</b> 套進公式試算看看。</p>
         </div>
-        <div className="prn-walkthrough">
-          <article className="walk-card">
-            <div className="walk-h">1. 每日熱量</div>
-            <div className="walk-line">每日熱量 = {profile.weightKg} × {goal?.factor} = <b>{rec.target} kcal</b></div>
-          </article>
-          <article className="walk-card">
-            <div className="walk-h">2. 三大營養素克數</div>
-            <div className="walk-line">CHO = {rec.target} × 50% ÷ 4 = <b>約 {choG} g</b></div>
-            <div className="walk-line">PRO = {rec.target} × 25% ÷ 4 = <b>約 {proG} g</b></div>
-            <div className="walk-line">FAT = {rec.target} × 25% ÷ 9 = <b>約 {fatG} g</b></div>
-          </article>
-          <article className="walk-card">
-            <div className="walk-h">3. 建議份數示範</div>
-            <div className="walk-line">全穀根莖類 ≈ {choG} × 60% ÷ 15 ≈ <b>約 {Math.round(choG * 0.6 / 15)} 份</b></div>
-            <div className="walk-line">水果類 ≈ {choG} × 20% ÷ 15 ≈ <b>約 {Math.round(choG * 0.2 / 15)} 份</b></div>
-            <div className="walk-line">蔬菜類 ≈ {choG} × 20% ÷ 5 ≈ <b>約 {Math.round(choG * 0.2 / 5)} 份</b></div>
-            <div className="walk-line">豆魚肉蛋類 ≈ {proG} ÷ 7 ≈ <b>約 {Math.round(proG / 7)} 份</b></div>
-            <div className="walk-line">油脂與堅果類 ≈ {fatG} ÷ 5 ≈ <b>約 {Math.round(fatG / 5)} 份</b></div>
-          </article>
-        </div>
-
-        <div className="walk-flow">
-          <span className="flow-step">先估算熱量</span>
-          <span className="flow-arrow">→</span>
-          <span className="flow-step">分配營養素比例</span>
-          <span className="flow-arrow">→</span>
-          <span className="flow-step">換算成克數</span>
-          <span className="flow-arrow">→</span>
-          <span className="flow-step">用食物代換表反推每日建議份數</span>
-        </div>
+        {window.FormulaShowcase ? <window.FormulaShowcase profile={profile} rec={rec} embedded /> : null}
       </section>
     </>
   );
