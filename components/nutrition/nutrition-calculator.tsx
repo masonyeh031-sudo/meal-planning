@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 
+import { CalculatorSuggestionPanel } from "./calculator-suggestion-panel";
 import styles from "./nutrition-calculator.module.css";
 import { NutritionSiteNavigation } from "./site-navigation";
 import {
@@ -514,6 +515,8 @@ export function NutritionCalculator() {
               ))}
             </div>
           </section>
+
+          <CalculatorSuggestionPanel servings={servings} />
 
           <section className={styles.macroCards}>
             {macroBreakdown.map((item, index) => (

@@ -7,6 +7,7 @@ import styles from "./site-navigation.module.css";
 
 const NAV_ITEMS = [
   { href: "/", label: "飲食計算器" },
+  { href: "/food-guide", label: "六大類食物指南" },
   { href: "/calculation", label: "計算原理" },
   { href: "/records", label: "七天飲食紀錄" },
 ];
