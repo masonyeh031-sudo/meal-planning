@@ -59,7 +59,7 @@
 .content {
   position: relative;
   z-index: 1;
-  width: min(100% - 2rem, 1260px);
+  width: min(100% - 2rem, 1480px);
   margin: 0 auto;
 }
 
@@ -513,7 +513,7 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.85fr);
+  grid-template-columns: 1fr;
   gap: 1.5rem;
 }
 
@@ -696,7 +696,7 @@
 
 .insightGrid {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -890,7 +890,7 @@
 
 .weekCharts {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
   margin-top: 1.2rem;
 }
@@ -979,10 +979,6 @@
   .weekCharts {
     grid-template-columns: 1fr;
   }
-
-  .summaryColumn {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 920px) {
@@ -1010,7 +1006,7 @@
 @media (max-width: 640px) {
   .hero,
   .content {
-    width: min(100% - 1.25rem, 1260px);
+    width: min(100% - 1.25rem, 1480px);
   }
 
   .hero {
