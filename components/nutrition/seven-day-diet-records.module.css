@@ -443,6 +443,17 @@
   box-shadow: 0 0 0 4px rgba(140, 198, 161, 0.12);
 }
 
+.input[readonly] {
+  background: rgba(234, 243, 255, 0.74);
+  color: #47637d;
+  cursor: default;
+}
+
+.input[readonly]:focus {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
 .textarea {
   resize: vertical;
   min-height: 94px;
@@ -550,6 +561,13 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 0.95rem;
+}
+
+.fieldHint {
+  margin: 0.85rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  line-height: 1.65;
 }
 
 .inlineError {

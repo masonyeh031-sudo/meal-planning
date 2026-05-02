@@ -4,36 +4,42 @@ export const DIET_RECORD_CATEGORIES = [
     label: "全榖雜糧類",
     color: "#8cc6a1",
     softColor: "#edf7ef",
+    caloriesPerServing: 68,
   },
   {
     id: "protein",
     label: "豆魚蛋肉類",
     color: "#f5a96b",
     softColor: "#fff3e8",
+    caloriesPerServing: 73,
   },
   {
     id: "dairy",
     label: "乳品類",
     color: "#8dbefc",
     softColor: "#edf5ff",
+    caloriesPerServing: 152,
   },
   {
     id: "vegetables",
     label: "蔬菜類",
     color: "#7dcf9a",
     softColor: "#ecfbf1",
+    caloriesPerServing: 24,
   },
   {
     id: "fruits",
     label: "水果類",
     color: "#ffbc77",
     softColor: "#fff5e8",
+    caloriesPerServing: 60,
   },
   {
     id: "fats",
     label: "油脂與堅果種子類",
     color: "#b8b4a7",
     softColor: "#f4f1eb",
+    caloriesPerServing: 45,
   },
 ] as const;
 
@@ -138,6 +144,25 @@ function sanitizeString(value: unknown) {
   return "";
 }
 
+export function sanitizeNumericInput(value: string) {
+  let result = "";
+  let hasDecimalPoint = false;
+
+  for (const character of value) {
+    if (character >= "0" && character <= "9") {
+      result += character;
+      continue;
+    }
+
+    if (character === "." && !hasDecimalPoint) {
+      result += result.length === 0 ? "0." : ".";
+      hasDecimalPoint = true;
+    }
+  }
+
+  return result;
+}
+
 function sanitizeDateString(value: unknown, fallback: string) {
   const text = sanitizeString(value);
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : fallback;
@@ -163,13 +188,15 @@ function normalizeFoodEntry(value: unknown): DietFoodEntry | null {
   }
 
   const candidate = value as Partial<DietFoodEntry>;
+  const category = isValidCategoryId(candidate.category) ? candidate.category : DEFAULT_CATEGORY;
+  const amount = sanitizeNumericInput(sanitizeString(candidate.amount));
 
   return {
     id: sanitizeString(candidate.id) || createRecordId("food"),
     name: sanitizeString(candidate.name),
-    amount: sanitizeString(candidate.amount),
-    category: isValidCategoryId(candidate.category) ? candidate.category : DEFAULT_CATEGORY,
-    calories: sanitizeString(candidate.calories),
+    amount,
+    category,
+    calories: buildAutoCaloriesValue(category, amount),
     note: sanitizeString(candidate.note),
   };
 }
@@ -301,6 +328,17 @@ export function getDietMealLabel(mealId: DietMealId) {
   return DIET_RECORD_MEALS.find((meal) => meal.id === mealId)?.label ?? mealId;
 }
 
+export function isValidQuantityInput(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  const numericValue = Number(trimmed);
+  return Number.isFinite(numericValue) && numericValue > 0;
+}
+
 export function isValidCaloriesInput(value: string) {
   const trimmed = value.trim();
 
@@ -316,15 +354,29 @@ export function getCaloriesValue(value: string) {
   return isValidCaloriesInput(value) ? Number(value) : 0;
 }
 
-export function validateDietFoodEntry(item: Pick<DietFoodEntry, "name" | "calories">) {
+export function buildAutoCaloriesValue(
+  categoryId: DietFoodCategoryId,
+  amount: string,
+) {
+  if (!isValidQuantityInput(amount)) {
+    return "";
+  }
+
+  const category = getDietCategoryMeta(categoryId);
+  return String(Math.round(Number(amount) * category.caloriesPerServing));
+}
+
+export function validateDietFoodEntry(
+  item: Pick<DietFoodEntry, "name" | "amount" | "category">,
+) {
   const errors: string[] = [];
 
   if (!sanitizeString(item.name).trim()) {
     errors.push("食物名稱不能空白");
   }
 
-  if (!isValidCaloriesInput(sanitizeString(item.calories))) {
-    errors.push("熱量請輸入有效的數字");
+  if (!isValidQuantityInput(sanitizeString(item.amount))) {
+    errors.push("食物分量請輸入有效的阿拉伯數字");
   }
 
   return errors;

@@ -8,16 +8,19 @@ import { NutritionSiteNavigation } from "./site-navigation";
 import {
   DIET_RECORD_CATEGORIES,
   DIET_RECORD_MEALS,
+  buildAutoCaloriesValue,
   clearDietWeekRecordsStorage,
   createEmptyDietFoodEntry,
   createEmptyDietWeekRecords,
   exportDietWeekRecords,
   getDietCategoryMeta,
   loadDietWeekRecords,
+  sanitizeNumericInput,
   saveDietWeekRecords,
   summarizeDietDay,
   summarizeDietWeek,
   validateDietFoodEntry,
+  type DietFoodCategoryId,
   type DietFoodEntry,
   type DietMealId,
   type DietRecordExportFormat,
@@ -101,6 +104,30 @@ function getComparisonStatus(delta: number) {
     tone: "under" as const,
     label: `低於建議 ${Math.round(Math.abs(delta)).toLocaleString("en-US")} kcal`,
     shortLabel: `低 ${Math.round(Math.abs(delta)).toLocaleString("en-US")} kcal`,
+  };
+}
+
+type EditableDietFoodField = keyof Pick<
+  DietFoodEntry,
+  "name" | "amount" | "category" | "note"
+>;
+
+function buildEntryWithAutoCalories(
+  entry: DietFoodEntry,
+  field: EditableDietFoodField,
+  value: string,
+): DietFoodEntry {
+  const nextAmount =
+    field === "amount" ? sanitizeNumericInput(value) : sanitizeNumericInput(entry.amount);
+  const nextCategory: DietFoodCategoryId =
+    field === "category" ? (value as DietFoodCategoryId) : entry.category;
+
+  return {
+    ...entry,
+    [field]: field === "amount" ? nextAmount : value,
+    category: nextCategory,
+    amount: nextAmount,
+    calories: buildAutoCaloriesValue(nextCategory, nextAmount),
   };
 }
 
@@ -270,17 +297,14 @@ export function SevenDayDietRecordsPage() {
 
   function updateMealDraft(
     mealId: DietMealId,
-    field: keyof Pick<DietFoodEntry, "name" | "amount" | "category" | "calories" | "note">,
+    field: EditableDietFoodField,
     value: string,
   ) {
     const key = getDraftKey(activeDayIndex, mealId);
 
     setMealDrafts((current) => ({
       ...current,
-      [key]: {
-        ...current[key],
-        [field]: value,
-      },
+      [key]: buildEntryWithAutoCalories(current[key], field, value),
     }));
   }
 
@@ -335,7 +359,7 @@ export function SevenDayDietRecordsPage() {
   function handleItemFieldChange(
     mealId: DietMealId,
     itemId: string,
-    field: keyof Pick<DietFoodEntry, "name" | "amount" | "category" | "calories" | "note">,
+    field: EditableDietFoodField,
     value: string,
   ) {
     updateDayRecord((dayRecord) => ({
@@ -344,10 +368,7 @@ export function SevenDayDietRecordsPage() {
         ...dayRecord.meals,
         [mealId]: dayRecord.meals[mealId].map((item) =>
           item.id === itemId
-            ? {
-                ...item,
-                [field]: value,
-              }
+            ? buildEntryWithAutoCalories(item, field, value)
             : item,
         ),
       },
@@ -680,11 +701,12 @@ export function SevenDayDietRecordsPage() {
                         />
                       </label>
                       <label className={styles.field}>
-                        <span>食物份量</span>
+                        <span>食物分量（份數）</span>
                         <input
                           className={styles.input}
                           type="text"
-                          placeholder="例如：1 碗、100g、250ml"
+                          inputMode="decimal"
+                          placeholder="例如：1、0.5、2"
                           value={draft.amount}
                           onChange={(event) =>
                             updateMealDraft(meal.id, "amount", event.target.value)
@@ -708,19 +730,20 @@ export function SevenDayDietRecordsPage() {
                         </select>
                       </label>
                       <label className={styles.field}>
-                        <span>熱量 kcal</span>
+                        <span>熱量 kcal（自動）</span>
                         <input
-                          className={draft.calories.trim() && draftErrors.length > 0 ? styles.inputError : styles.input}
+                          className={styles.input}
                           type="text"
-                          inputMode="decimal"
-                          placeholder="例如：230"
+                          placeholder="依分類與分量自動換算"
                           value={draft.calories}
-                          onChange={(event) =>
-                            updateMealDraft(meal.id, "calories", event.target.value)
-                          }
+                          readOnly
                         />
                       </label>
                     </div>
+
+                    <p className={styles.fieldHint}>
+                      分量請輸入阿拉伯數字，例如 1、0.5、2；熱量會依六大類每份熱量自動換算。
+                    </p>
 
                     <label className={styles.field}>
                       <span>備註</span>
@@ -810,10 +833,12 @@ export function SevenDayDietRecordsPage() {
                                 />
                               </label>
                               <label className={styles.field}>
-                                <span>食物份量</span>
+                                <span>食物分量（份數）</span>
                                 <input
                                   className={styles.input}
                                   type="text"
+                                  inputMode="decimal"
+                                  placeholder="例如：1、0.5、2"
                                   value={item.amount}
                                   onChange={(event) =>
                                     handleItemFieldChange(
@@ -847,24 +872,13 @@ export function SevenDayDietRecordsPage() {
                                 </select>
                               </label>
                               <label className={styles.field}>
-                                <span>熱量 kcal</span>
+                                <span>熱量 kcal（自動）</span>
                                 <input
-                                  className={
-                                    item.calories.trim() && itemErrors.length > 0
-                                      ? styles.inputError
-                                      : styles.input
-                                  }
+                                  className={styles.input}
                                   type="text"
-                                  inputMode="decimal"
+                                  placeholder="依分類與分量自動換算"
                                   value={item.calories}
-                                  onChange={(event) =>
-                                    handleItemFieldChange(
-                                      meal.id,
-                                      item.id,
-                                      "calories",
-                                      event.target.value,
-                                    )
-                                  }
+                                  readOnly
                                 />
                               </label>
                             </div>
