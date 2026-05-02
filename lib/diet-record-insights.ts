@@ -223,7 +223,7 @@ export function buildDietWeeklyReview(args: {
           : "本週已開始建立飲食習慣資料。",
         flaggedCategories.length > 0
           ? `偏少的類別有 ${categoryWarningText}。`
-          : "六大類分布目前沒有明顯缺口。`,
+          : "六大類分布目前沒有明顯缺口。",
       ],
       nextStep: "若不是刻意減脂，建議把早餐或下午茶補進較穩定的主食、蛋白質與水果來源。",
     } satisfies DietWeeklyReview;
