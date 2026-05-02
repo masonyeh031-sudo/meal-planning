@@ -1,5 +1,5 @@
-import { FoodGuidePage } from "@/components/nutrition/food-guide-page";
+import { redirect } from "next/navigation";
 
 export default function FoodGuideRoutePage() {
-  return <FoodGuidePage />;
+  redirect("/zip-site/index.html#guide");
 }

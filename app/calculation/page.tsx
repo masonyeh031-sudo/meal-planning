@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-
-import { CalculationPrinciplesPage } from "@/components/nutrition/calculation-principles-page";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "飲食數據怎麼算？",
@@ -9,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function CalculationPage() {
-  return <CalculationPrinciplesPage />;
+  redirect("/zip-site/index.html#principles");
 }

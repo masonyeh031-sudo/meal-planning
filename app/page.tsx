@@ -1,6 +1,5 @@
-import { NutritionCalculator } from "@/components/nutrition/nutrition-calculator";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <NutritionCalculator />;
+  redirect("/zip-site/index.html");
 }
-

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-
-import { SevenDayDietRecordsPage } from "@/components/nutrition/seven-day-diet-records-page";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "七天飲食紀錄",
@@ -9,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RecordsPage() {
-  return <SevenDayDietRecordsPage />;
+  redirect("/zip-site/index.html#records");
 }
