@@ -623,7 +623,6 @@ function CalculatorPage({ profile, setProfile, servings, setServings }) {
         <ProfileForm profile={profile} setProfile={setProfile} />
         <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
           <Dashboard rec={rec} summary={summary} profile={profile} calorieDelta={delta} />
-          <FormulaShowcase profile={profile} rec={rec} />
           <ServingsEditor servings={servings} setServings={setServings} rec={rec} />
           <div className="chart-grid">
             <MacroDonut summary={summary} />
