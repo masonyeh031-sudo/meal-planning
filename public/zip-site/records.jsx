@@ -1,14 +1,5 @@
 // ===== 7-day Records page =====
-const QUICK_FOODS = [
-  { name: "白飯", icon: "🍚", amt: "1 碗", kcal: 280, groupId: "grains", servings: 4 },
-  { name: "雞蛋", icon: "🥚", amt: "1 顆", kcal: 75, groupId: "protein", servings: 1 },
-  { name: "雞胸肉", icon: "🍗", amt: "1 掌心", kcal: 165, groupId: "protein", servings: 1 },
-  { name: "牛奶", icon: "🥛", amt: "240ml", kcal: 150, groupId: "dairy", servings: 1 },
-  { name: "青菜", icon: "🥬", amt: "1 碟", kcal: 25, groupId: "vegetables", servings: 1 },
-  { name: "蘋果", icon: "🍎", amt: "1 顆", kcal: 95, groupId: "fruits", servings: 1 },
-  { name: "堅果", icon: "🥜", amt: "1 湯匙", kcal: 90, groupId: "fats", servings: 1 },
-  { name: "豆漿", icon: "🥣", amt: "1 杯", kcal: 80, groupId: "protein", servings: 1 },
-];
+const RECORDING_UNIT = 0.5;
 
 const MEALS = [
   { id: "breakfast", label: "早餐", icon: "🌅", tint: "var(--cream-soft)" },
@@ -40,8 +31,24 @@ function saveRecords(w) {
   try { localStorage.setItem("meal-records-v1", JSON.stringify(w)); } catch {}
 }
 
+function groupServingKcal(groupId, servings = RECORDING_UNIT) {
+  const group = window.NUTRITION.FOOD_GROUPS.find((item) => item.id === groupId);
+  if (!group) return 0;
+  return Math.round((group.cho * 4 + group.pro * 4 + group.fat * 9) * servings);
+}
+
+const QUICK_GROUP_RECORDS = window.NUTRITION.FOOD_GROUPS.map((group) => ({
+  name: group.label,
+  icon: group.icon,
+  amt: `${RECORDING_UNIT} 份`,
+  kcal: groupServingKcal(group.id),
+  groupId: group.id,
+  servings: RECORDING_UNIT,
+  desc: group.desc,
+}));
+
 const QUICK_FOOD_META = Object.fromEntries(
-  QUICK_FOODS.map((food) => [food.name, { groupId: food.groupId, servings: food.servings, icon: food.icon }])
+  QUICK_GROUP_RECORDS.map((food) => [food.name, { groupId: food.groupId, servings: food.servings, icon: food.icon }])
 );
 
 function normalizeRecordFood(food) {
@@ -97,10 +104,18 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
       return next;
     });
   }
-  function clearDay() {
-    if (!confirm("確定要清空今天的紀錄嗎？")) return;
-    setWeek(w => w.map((d, i) => i === activeDay ? emptyDay() : d));
-    onToast({ icon: "🧹", text: "已清空今天的紀錄" });
+  function clearMeal(mealId) {
+    const meal = MEALS.find((item) => item.id === mealId);
+    const list = day[mealId] || [];
+    if (list.length === 0) return;
+    if (!confirm(`確定要清空${meal?.label || "這一餐"}嗎？`)) return;
+    setWeek(w => {
+      const next = w.map((d, i) => i === activeDay ? { ...d } : d);
+      const cur = next[activeDay];
+      cur[mealId] = [];
+      return next;
+    });
+    onToast({ icon: "🧹", text: `已清空${meal?.label || "這一餐"}` });
   }
 
   function dayTotalK(d) {
@@ -113,7 +128,7 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
         <SectionTitle
           eyebrow="Diet Records · 七日紀錄"
           title="記下這一週的飲食"
-          sub="點擊常用食物快速加入，或用每餐卡片管理今天的紀錄。資料會自動存在你的瀏覽器中。"
+          sub="用六大類快速記錄早餐、午餐、晚餐、點心與宵夜，每按一次就以 0.5 份累計。資料會自動存在你的瀏覽器中。"
         />
       </section>
       <section className="shell records">
@@ -155,9 +170,9 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
                   完成度 {completion.toFixed(0)}% · 已紀錄 {itemCount} 項
                 </div>
               </div>
-              <button className="btn" onClick={clearDay} disabled={itemCount === 0}>
-                <span aria-hidden="true">🧹</span>清空今天
-              </button>
+              <div className="records-summary-note">
+                已改成每餐都能個別清空，從下方的早餐、午餐、晚餐、點心、宵夜卡片操作就可以。
+              </div>
             </div>
           </article>
         </aside>
@@ -165,8 +180,8 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
         <div className="day-detail">
           <div className="quick-add">
             <div className="quick-add-title">
-              <span aria-hidden="true">⚡</span>
-              <span>常用食物 · 點擊快速加入到</span>
+              <span aria-hidden="true">🥗</span>
+              <span>六大類快速記錄 · 每按一次 + {RECORDING_UNIT} 份 到</span>
               <select
                 className="select"
                 style={{ padding: "4px 28px 4px 10px", fontSize: 12, fontWeight: 700, height: 28, marginLeft: 4 }}
@@ -176,26 +191,19 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
                 {MEALS.map(m => <option key={m.id} value={m.id}>{m.icon} {m.label}</option>)}
               </select>
             </div>
+            <div className="quick-add-hint">用六大類份數快速累計今天的早餐、午餐、晚餐、點心與宵夜進度。</div>
             <div className="quick-chips">
-              {QUICK_FOODS.map(f => (
+              {QUICK_GROUP_RECORDS.map(f => (
                 <button key={f.name} className="quick-chip" onClick={() => add(f)}>
-                  <span>{f.icon}</span>
-                  <span>{f.name}</span>
-                  <span style={{ color: "var(--ink-mute)", fontSize: 11 }}>{f.kcal} kcal</span>
+                  <span className="quick-chip-ico" aria-hidden="true">{f.icon}</span>
+                  <span className="quick-chip-main">
+                    <span className="quick-chip-name">{f.name}</span>
+                    <span className="quick-chip-meta">+ {f.amt} · {f.kcal} kcal</span>
+                  </span>
                 </button>
               ))}
             </div>
           </div>
-
-          {window.ServingGuideBoard ? (
-            <window.ServingGuideBoard
-              targetServings={recommendedServings}
-              currentServings={dayServings}
-              title="今日各類食物份數"
-              subtitle="把今天已記錄的食物換算成六大類份數，圖案會跟著目前進度慢慢增加。"
-              showProgress
-            />
-          ) : null}
 
           {MEALS.map(m => {
             const list = day[m.id] || [];
@@ -207,7 +215,7 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
                     <span className="meal-ico" style={{ background: m.tint }}>{m.icon}</span>
                     {m.label}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div className="meal-actions">
                     <span className="meal-kcal">{Math.round(k)} kcal</span>
                     <button
                       className="btn"
@@ -216,6 +224,14 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
                     >
                       <span aria-hidden="true">＋</span>選此餐
                     </button>
+                    <button
+                      className="btn btn-soft-danger"
+                      style={{ padding: "6px 12px", fontSize: 12 }}
+                      onClick={() => clearMeal(m.id)}
+                      disabled={list.length === 0}
+                    >
+                      <span aria-hidden="true">🧹</span>清空{m.label}
+                    </button>
                   </div>
                 </div>
                 {list.length === 0 ? (
@@ -223,7 +239,7 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
                     <span className="ico" aria-hidden="true">{m.icon}</span>
                     {activeDay === 0 && m.id === "breakfast"
                       ? "今天還沒有紀錄，先從早餐開始吧！"
-                      : `${m.label}還是空的，點上方常用食物快速加入吧。`}
+                      : `${m.label}還是空的，點上方六大類快速記錄加入吧。`}
                   </div>
                 ) : (
                   <div>
@@ -245,6 +261,16 @@ function RecordsPage({ targetKcal, recommendedServings, onToast }) {
               </article>
             );
           })}
+
+          {window.ServingGuideBoard ? (
+            <window.ServingGuideBoard
+              targetServings={recommendedServings}
+              currentServings={dayServings}
+              title="今日各類食物份數"
+              subtitle="現在改成每按一次就以 0.5 份累計，圖案也會跟著目前進度慢慢增加。"
+              showProgress
+            />
+          ) : null}
         </div>
       </section>
     </>
