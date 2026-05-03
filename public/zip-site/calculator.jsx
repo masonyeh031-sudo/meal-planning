@@ -464,7 +464,11 @@ function MacroDonut({ summary }) {
           </div>
 
           <div className="mealboard-caption">
-            <span className="mealboard-caption-pill">今天最多：{mainMacro.label}</span>
+            <span className="mealboard-caption-pill">
+              <span className="mealboard-caption-badge" aria-hidden="true">★</span>
+              <b>今天最多</b>
+              <span>{mainMacro.label}</span>
+            </span>
             <span className="mealboard-caption-note">像日常便當盤一樣，最大格代表今天最主要的能量來源。</span>
           </div>
 

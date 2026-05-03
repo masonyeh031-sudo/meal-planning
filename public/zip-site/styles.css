@@ -1841,16 +1841,39 @@ img { display: block; max-width: 100%; }
 }
 .mealboard-caption-pill {
   display: inline-flex;
-  align-self: flex-start;
-  padding: 7px 12px;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.88);
-  border: 1px solid rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 8px 18px rgba(63, 49, 23, 0.08);
   font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.mealboard-caption-pill b {
   font-weight: 800;
   color: var(--ink);
 }
+.mealboard-caption-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffe9ba 0%, #f6deb0 100%);
+  color: #8b5d18;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
 .mealboard-caption-note {
+  justify-self: start;
+  max-width: 34ch;
   font-size: 12.5px;
   color: var(--ink-soft);
   line-height: 1.65;
