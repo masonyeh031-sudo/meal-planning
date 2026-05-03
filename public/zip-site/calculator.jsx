@@ -405,59 +405,80 @@ function ServingsEditor({ servings, setServings, rec }) {
 }
 
 function MacroDonut({ summary }) {
-  const { ratios, totals, total } = summary;
+  const { ratios, totals, total, macroKcal } = summary;
   const data = [
-    { label: "CHO 碳水",   key: "cho", color: "var(--cho)",  deep: "var(--cho-deep)",  soft: "var(--cho-soft)", g: totals.cho, ratio: ratios.cho, ico: "🍚", food: "米飯", role: "提供主要能量" },
-    { label: "PRO 蛋白質", key: "pro", color: "var(--pro)",  deep: "var(--pro-deep)",  soft: "var(--pro-soft)", g: totals.pro, ratio: ratios.pro, ico: "🍗", food: "主菜", role: "建造肌肉組織" },
-    { label: "FAT 脂肪",   key: "fat", color: "var(--fat)",  deep: "var(--fat-deep)",  soft: "var(--fat-soft)", g: totals.fat, ratio: ratios.fat, ico: "🥑", food: "油脂", role: "幫助吸收養分" },
+    { label: "CHO 碳水",   key: "cho", color: "var(--cho)",  deep: "var(--cho-deep)",  soft: "var(--cho-soft)", g: totals.cho, kcal: macroKcal.cho, ratio: ratios.cho, ico: "🍚", role: "飯、麵與主食能量" },
+    { label: "PRO 蛋白質", key: "pro", color: "var(--pro)",  deep: "var(--pro-deep)",  soft: "var(--pro-soft)", g: totals.pro, kcal: macroKcal.pro, ratio: ratios.pro, ico: "🍗", role: "肉、魚、蛋幫助修復" },
+    { label: "FAT 脂肪",   key: "fat", color: "var(--fat)",  deep: "var(--fat-deep)",  soft: "var(--fat-soft)", g: totals.fat, kcal: macroKcal.fat, ratio: ratios.fat, ico: "🥑", role: "油脂幫助吸收與飽足" },
   ];
-
-  // Macro circle sizes — radius in px, scales with ratio (clamped to 70–140)
-  const sizeFor = (r) => Math.max(78, Math.min(150, 70 + r * 1.6));
+  const sorted = [...data].sort((a, b) => b.ratio - a.ratio);
+  const [mainMacro, secondMacro, thirdMacro] = sorted;
+  const compactMacros = [secondMacro, thirdMacro].filter(Boolean);
 
   return (
-    <article className="card">
+    <article className="card macro-card">
       <div className="card-eyebrow"><span aria-hidden="true">🍱</span>Step 04 · 營養素分布</div>
       <h2 className="card-title">三大營養素比例</h2>
-      <p className="card-sub">把今天的營養素裝進圓盤裡看看 — 哪一格放最多？</p>
+      <p className="card-sub">用像便當盤一樣的方式看看今天的營養比例，最常出現的營養素會放在最大格。</p>
 
       <div className="plate-wrap">
-        {/* 圓盤 */}
-        <div className="plate" role="img" aria-label="今日營養圓盤">
-          <div className="plate-tape"><span>{Math.round(total)} kcal · 今日營養盤</span></div>
-          <div className="plate-ring" />
-          <div className="plate-bowls">
-            {data.map((d, i) => {
-              const s = sizeFor(d.ratio);
-              return (
-                <div
+        <div className="mealboard" role="img" aria-label="今日餐盤三大營養素比例">
+          <div className="mealboard-note">{Math.round(total)} kcal · 今日餐盤</div>
+          <div className="mealboard-rim" />
+          <div className="mealboard-grid">
+            <section
+              className={`meal-slot meal-slot-main is-${mainMacro.key}`}
+              style={{ "--slot-color": mainMacro.color, "--slot-deep": mainMacro.deep, "--slot-soft": mainMacro.soft }}
+            >
+              <div className="meal-chip">
+                <span className="meal-chip-ico" aria-hidden="true">{mainMacro.ico}</span>
+                <span>{mainMacro.label}</span>
+              </div>
+              <div className="meal-slot-percent">{mainMacro.ratio.toFixed(1)}%</div>
+              <div className="meal-slot-copy">{mainMacro.role}</div>
+              <div className="meal-slot-meta">
+                <span>{Math.round(mainMacro.g)} g</span>
+                <span>{Math.round(mainMacro.kcal)} kcal</span>
+              </div>
+            </section>
+
+            <div className="meal-slot-stack">
+              {compactMacros.map((d) => (
+                <section
                   key={d.key}
-                  className={`bowl bowl-${d.key}`}
-                  style={{
-                    width: s,
-                    height: s,
-                    background: `radial-gradient(circle at 35% 30%, ${d.soft} 0%, ${d.color} 70%, ${d.deep} 100%)`,
-                    animationDelay: `${i * 120}ms`,
-                  }}
+                  className={`meal-slot meal-slot-small is-${d.key}`}
+                  style={{ "--slot-color": d.color, "--slot-deep": d.deep, "--slot-soft": d.soft }}
                 >
-                  <span className="bowl-ico">{d.ico}</span>
-                  <div className="bowl-info">
-                    <span className="bowl-pct" style={{ color: d.deep }}>{d.ratio.toFixed(0)}<i>%</i></span>
-                    <span className="bowl-key" style={{ color: d.deep }}>{d.key.toUpperCase()}</span>
+                  <div className="meal-chip">
+                    <span className="meal-chip-ico" aria-hidden="true">{d.ico}</span>
+                    <span>{d.label}</span>
                   </div>
-                </div>
-              );
-            })}
+                  <div className="meal-slot-percent">{d.ratio.toFixed(1)}%</div>
+                  <div className="meal-slot-meta">
+                    <span>{Math.round(d.g)} g</span>
+                    <span>{Math.round(d.kcal)} kcal</span>
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
-          <div className="plate-chops" aria-hidden="true">🥢</div>
+
+          <div className="mealboard-caption">
+            <span className="mealboard-caption-pill">今天最多：{mainMacro.label}</span>
+            <span className="mealboard-caption-note">像日常便當盤一樣，最大格代表今天最主要的能量來源。</span>
+          </div>
+
+          <div className="mealboard-chopsticks" aria-hidden="true">
+            <span />
+            <span />
+          </div>
         </div>
 
-        {/* 詳情卡片 */}
         <div className="macro-list">
           {data.map((d, i) => (
-            <div
+            <article
               key={d.key}
-              className="macro-row"
+              className={"macro-story" + (d.key === mainMacro.key ? " is-highlight" : "")}
               style={{
                 "--mc": d.color,
                 "--mc-deep": d.deep,
@@ -465,24 +486,34 @@ function MacroDonut({ summary }) {
                 animationDelay: `${i * 100}ms`,
               }}
             >
-              <div className="macro-row-head">
-                <span className="macro-chip">
-                  <span className="macro-ico">{d.ico}</span>
+              <div className="macro-story-head">
+                <span className="macro-story-chip">
+                  <span className="macro-story-ico">{d.ico}</span>
                   <b>{d.label}</b>
                 </span>
-                <span className="macro-pct">{d.ratio.toFixed(1)}%</span>
+                <span className="macro-story-pct">{d.ratio.toFixed(1)}%</span>
               </div>
-              <div className="macro-bar">
-                <div className="macro-bar-fill" style={{ width: `${d.ratio}%` }} />
+
+              <div className="macro-story-stat">
+                <div className="macro-story-kcal">
+                  <strong>{Math.round(d.kcal)}</strong>
+                  <span>kcal</span>
+                </div>
+                <div className="macro-story-grams">
+                  <strong>{Math.round(d.g)}</strong>
+                  <span>g</span>
+                </div>
               </div>
-              <div className="macro-row-meta">
-                <span><b>{Math.round(d.g)}</b> g</span>
-                <span className="dot">·</span>
-                <span>{Math.round(d.g * (d.key === "fat" ? 9 : 4))} kcal</span>
-                <span className="dot">·</span>
-                <span className="muted">{d.role}</span>
+
+              <div className="macro-story-bar">
+                <div className="macro-story-bar-fill" style={{ width: `${d.ratio}%` }} />
               </div>
-            </div>
+
+              <div className="macro-story-foot">
+                <span>{d.role}</span>
+                <span className="macro-story-tag">{d.key === mainMacro.key ? "今日主角" : "一起搭配"}</span>
+              </div>
+            </article>
           ))}
           <div className="macro-total">
             <span className="muted">合計</span>
@@ -495,67 +526,64 @@ function MacroDonut({ summary }) {
 }
 
 function ServingBars({ servings, rec }) {
-  const max = Math.max(
-    ..._N.FOOD_GROUPS.map(g => servings[g.id]),
-    ..._N.FOOD_GROUPS.map(g => rec.recommended[g.id]),
-    1
-  );
   const totalNow = _N.FOOD_GROUPS.reduce((a, g) => a + servings[g.id], 0);
   const totalRec = _N.FOOD_GROUPS.reduce((a, g) => a + rec.recommended[g.id], 0);
   return (
-    <article className="card">
+    <article className="card serving-card-board">
       <div className="card-eyebrow"><span aria-hidden="true">📈</span>份數對照</div>
       <h2 className="card-title">各類食物份數</h2>
-      <div className="bullet-legend">
-        <span className="bl-item"><span className="bl-dot bl-target" />建議份數</span>
-        <span className="bl-item"><span className="bl-dot bl-now" />目前份數</span>
-        <span className="bl-spacer" />
-        <span className="bl-summary">合計 {_N.fmt(totalNow)} / 建議 {_N.fmt(totalRec)} 份</span>
+      <p className="card-sub">每一列都以該類食物的建議份數當作一條完整刻度，會更容易看出今天有沒有吃到位。</p>
+
+      <div className="serving-legend">
+        <span className="serving-legend-item"><span className="serving-legend-dot is-target" />建議刻度</span>
+        <span className="serving-legend-item"><span className="serving-legend-dot is-now" />目前進度</span>
+        <span className="serving-total-pill">今日 {_N.fmt(totalNow)} 份 / 建議 {_N.fmt(totalRec)} 份</span>
       </div>
-      <div className="bullets">
+
+      <div className="serving-rows">
         {_N.FOOD_GROUPS.map((g, i) => {
           const now = servings[g.id];
           const target = rec.recommended[g.id];
           const diff = +(now - target).toFixed(1);
-          const pct = (now / Math.max(target, 0.5)) * 100;
+          const ratio = target > 0 ? now / target : 0;
+          const pct = Math.min(100, Math.max(0, ratio * 100));
+          const overPct = ratio > 1 ? Math.min(30, (ratio - 1) * 100) : 0;
           const status = Math.abs(diff) < 0.3 ? "ok" : diff > 0 ? "over" : "under";
           return (
-            <div
+            <article
               key={g.id}
-              className="bullet-row"
+              className={`serving-row is-${status}`}
               style={{ "--gc": g.accent, "--gc-soft": g.tint, animationDelay: `${i * 60}ms` }}
             >
-              <div className="bullet-label">
-                <span className="bullet-ico">{g.icon}</span>
-                <span className="bullet-name">{g.label}</span>
+              <div className="serving-row-head">
+                <div className="serving-badge">
+                  <span className="serving-badge-ico">{g.icon}</span>
+                  <div>
+                    <span className="serving-badge-name">{g.label}</span>
+                    <span className="serving-badge-desc">{g.desc}</span>
+                  </div>
+                </div>
+
+                <div className="serving-values">
+                  <strong>{_N.fmt(now)}</strong>
+                  <span>/ {_N.fmt(target)} 份</span>
+                </div>
               </div>
-              <div className="bullet-track">
-                {/* 建議底框 */}
-                <div
-                  className="bullet-target"
-                  style={{ width: `${(target / max) * 100}%` }}
-                  title={`建議 ${_N.fmt(target)} 份`}
-                />
-                {/* 目前填色 */}
-                <div
-                  className="bullet-now"
-                  style={{ width: `${(now / max) * 100}%` }}
-                />
-                {/* 建議刻度線 */}
-                <div
-                  className="bullet-tick"
-                  style={{ left: `${(target / max) * 100}%` }}
-                  aria-hidden="true"
-                />
+
+              <div className="serving-track">
+                <div className="serving-track-target" />
+                <div className="serving-track-fill" style={{ width: `${pct}%` }} />
+                {overPct > 0 ? <div className="serving-track-over" style={{ width: `${overPct}%` }} /> : null}
               </div>
-              <div className="bullet-num">
-                <span className={`bullet-now-num`}>{_N.fmt(now)}</span>
-                <span className="bullet-of">/ {_N.fmt(target)}</span>
-                <span className={`bullet-diff is-${status}`}>
-                  {status === "ok" ? "✓ 達標" : status === "over" ? `+${_N.fmt(Math.abs(diff))}` : `−${_N.fmt(Math.abs(diff))}`}
+
+              <div className="serving-row-foot">
+                <span>建議 {_N.fmt(target)} 份</span>
+                <span>目前 {_N.fmt(now)} 份</span>
+                <span className={`serving-status is-${status}`}>
+                  {status === "ok" ? "✓ 剛剛好" : status === "over" ? `多 ${_N.fmt(Math.abs(diff))} 份` : `少 ${_N.fmt(Math.abs(diff))} 份`}
                 </span>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>
