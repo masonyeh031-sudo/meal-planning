@@ -96,7 +96,13 @@ function App() {
       )}
       {page === "guide" && <FoodGuidePage />}
       {page === "principles" && <PrinciplesPage profile={profile} />}
-      {page === "records" && <RecordsPage targetKcal={rec.target} onToast={setToast} />}
+      {page === "records" && (
+        <RecordsPage
+          targetKcal={rec.target}
+          recommendedServings={rec.recommended}
+          onToast={setToast}
+        />
+      )}
 
       <Toast msg={toast} onDone={() => setToast(null)} />
 

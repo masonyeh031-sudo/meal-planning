@@ -1,13 +1,13 @@
 // ===== 7-day Records page =====
 const QUICK_FOODS = [
-  { name: "白飯", icon: "🍚", amt: "1 碗", kcal: 280 },
-  { name: "雞蛋", icon: "🥚", amt: "1 顆", kcal: 75 },
-  { name: "雞胸肉", icon: "🍗", amt: "1 掌心", kcal: 165 },
-  { name: "牛奶", icon: "🥛", amt: "240ml", kcal: 150 },
-  { name: "青菜", icon: "🥬", amt: "1 碟", kcal: 25 },
-  { name: "蘋果", icon: "🍎", amt: "1 顆", kcal: 95 },
-  { name: "堅果", icon: "🥜", amt: "1 湯匙", kcal: 90 },
-  { name: "豆漿", icon: "🥣", amt: "1 杯", kcal: 80 },
+  { name: "白飯", icon: "🍚", amt: "1 碗", kcal: 280, groupId: "grains", servings: 4 },
+  { name: "雞蛋", icon: "🥚", amt: "1 顆", kcal: 75, groupId: "protein", servings: 1 },
+  { name: "雞胸肉", icon: "🍗", amt: "1 掌心", kcal: 165, groupId: "protein", servings: 1 },
+  { name: "牛奶", icon: "🥛", amt: "240ml", kcal: 150, groupId: "dairy", servings: 1 },
+  { name: "青菜", icon: "🥬", amt: "1 碟", kcal: 25, groupId: "vegetables", servings: 1 },
+  { name: "蘋果", icon: "🍎", amt: "1 顆", kcal: 95, groupId: "fruits", servings: 1 },
+  { name: "堅果", icon: "🥜", amt: "1 湯匙", kcal: 90, groupId: "fats", servings: 1 },
+  { name: "豆漿", icon: "🥣", amt: "1 杯", kcal: 80, groupId: "protein", servings: 1 },
 ];
 
 const MEALS = [
@@ -40,7 +40,34 @@ function saveRecords(w) {
   try { localStorage.setItem("meal-records-v1", JSON.stringify(w)); } catch {}
 }
 
-function RecordsPage({ targetKcal, onToast }) {
+const QUICK_FOOD_META = Object.fromEntries(
+  QUICK_FOODS.map((food) => [food.name, { groupId: food.groupId, servings: food.servings, icon: food.icon }])
+);
+
+function normalizeRecordFood(food) {
+  const meta = QUICK_FOOD_META[food.name] || {};
+  return {
+    ...food,
+    groupId: food.groupId || meta.groupId || null,
+    servings: Number.isFinite(food.servings) ? food.servings : (Number.isFinite(meta.servings) ? meta.servings : 0),
+    icon: food.icon || meta.icon || "🍽️",
+  };
+}
+
+function sumDayServings(day) {
+  const totals = Object.fromEntries(window.NUTRITION.FOOD_GROUPS.map((g) => [g.id, 0]));
+  MEALS.forEach((meal) => {
+    (day[meal.id] || []).forEach((food) => {
+      const normalized = normalizeRecordFood(food);
+      if (normalized.groupId && normalized.groupId in totals) {
+        totals[normalized.groupId] += normalized.servings || 0;
+      }
+    });
+  });
+  return totals;
+}
+
+function RecordsPage({ targetKcal, recommendedServings, onToast }) {
   const [week, setWeek] = useState(() => loadRecords());
   const [activeDay, setActiveDay] = useState(0);
   const [activeMeal, setActiveMeal] = useState("breakfast");
@@ -51,6 +78,7 @@ function RecordsPage({ targetKcal, onToast }) {
   const dayKcal = MEALS.reduce((acc, m) => acc + (day[m.id]?.reduce((a, f) => a + (f.kcal || 0), 0) || 0), 0);
   const itemCount = MEALS.reduce((acc, m) => acc + (day[m.id]?.length || 0), 0);
   const completion = Math.min(100, (dayKcal / Math.max(1, targetKcal)) * 100);
+  const dayServings = sumDayServings(day);
 
   function add(food) {
     setWeek(w => {
@@ -158,6 +186,16 @@ function RecordsPage({ targetKcal, onToast }) {
               ))}
             </div>
           </div>
+
+          {window.ServingGuideBoard ? (
+            <window.ServingGuideBoard
+              targetServings={recommendedServings}
+              currentServings={dayServings}
+              title="今日各類食物份數"
+              subtitle="把今天已記錄的食物換算成六大類份數，圖案會跟著目前進度慢慢增加。"
+              showProgress
+            />
+          ) : null}
 
           {MEALS.map(m => {
             const list = day[m.id] || [];

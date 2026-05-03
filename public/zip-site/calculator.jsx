@@ -525,69 +525,138 @@ function MacroDonut({ summary }) {
   );
 }
 
-function ServingBars({ servings, rec }) {
-  const totalNow = _N.FOOD_GROUPS.reduce((a, g) => a + servings[g.id], 0);
-  const totalRec = _N.FOOD_GROUPS.reduce((a, g) => a + rec.recommended[g.id], 0);
-  return (
-    <article className="card serving-card-board">
-      <div className="card-eyebrow"><span aria-hidden="true">📈</span>份數對照</div>
-      <h2 className="card-title">各類食物份數</h2>
-      <p className="card-sub">每一列都以該類食物的建議份數當作一條完整刻度，會更容易看出今天有沒有吃到位。</p>
+function ServingGuideBoard({
+  targetServings,
+  currentServings = null,
+  title = "各類食物份數",
+  subtitle = "",
+  showProgress = false,
+}) {
+  const totalTarget = _N.FOOD_GROUPS.reduce((acc, g) => acc + (targetServings?.[g.id] || 0), 0);
+  const totalCurrent = currentServings
+    ? _N.FOOD_GROUPS.reduce((acc, g) => acc + (currentServings?.[g.id] || 0), 0)
+    : null;
 
-      <div className="serving-legend">
-        <span className="serving-legend-item"><span className="serving-legend-dot is-target" />建議刻度</span>
-        <span className="serving-legend-item"><span className="serving-legend-dot is-now" />目前進度</span>
-        <span className="serving-total-pill">今日 {_N.fmt(totalNow)} 份 / 建議 {_N.fmt(totalRec)} 份</span>
+  function buildStickerStates(target, current) {
+    const slotCount = Math.max(1, Math.ceil(target));
+    const capped = Math.min(showProgress ? current : target, target);
+    const fullCount = Math.floor(Math.max(0, capped));
+    const hasHalf = capped - fullCount >= 0.5 && fullCount < slotCount;
+
+    return Array.from({ length: slotCount }, (_, index) => {
+      if (index < fullCount) return "full";
+      if (hasHalf && index === fullCount) return "half";
+      return showProgress ? "empty" : "ghost";
+    });
+  }
+
+  return (
+    <article className={"card serving-guide-board" + (showProgress ? " is-progress" : " is-target-only")}>
+      <div className="card-eyebrow"><span aria-hidden="true">📊</span>{showProgress ? "今日份數進度" : "每日份數建議"}</div>
+      <h2 className="card-title">{title}</h2>
+      <p className="card-sub">
+        {subtitle || (showProgress
+          ? "依照今天已記錄的食物，自動累計六大類份數進度。"
+          : "這裡先看系統建議的每日份量，不顯示目前調整進度。")}
+      </p>
+
+      <div className="serving-guide-summary">
+        <div className="serving-guide-total">
+          <span className="serving-guide-total-label">{showProgress ? "建議總份數" : "今日建議總份數"}</span>
+          <strong>{_N.fmt(totalTarget)}</strong>
+          <span>份</span>
+        </div>
+
+        {showProgress ? (
+          <div className="serving-guide-total is-current">
+            <span className="serving-guide-total-label">目前進度</span>
+            <strong>{_N.fmt(totalCurrent || 0)}</strong>
+            <span>/ {_N.fmt(totalTarget)} 份</span>
+          </div>
+        ) : (
+          <div className="serving-guide-note">下面每一列直接顯示建議份量，方便你看今天大概要吃到多少。</div>
+        )}
       </div>
 
-      <div className="serving-rows">
+      <div className="serving-guide-list">
         {_N.FOOD_GROUPS.map((g, i) => {
-          const now = servings[g.id];
-          const target = rec.recommended[g.id];
-          const diff = +(now - target).toFixed(1);
-          const ratio = target > 0 ? now / target : 0;
-          const pct = Math.min(100, Math.max(0, ratio * 100));
-          const overPct = ratio > 1 ? Math.min(30, (ratio - 1) * 100) : 0;
+          const target = targetServings?.[g.id] || 0;
+          const current = currentServings?.[g.id] || 0;
+          const states = buildStickerStates(target, current);
+          const diff = +(current - target).toFixed(1);
           const status = Math.abs(diff) < 0.3 ? "ok" : diff > 0 ? "over" : "under";
+
           return (
             <article
               key={g.id}
-              className={`serving-row is-${status}`}
-              style={{ "--gc": g.accent, "--gc-soft": g.tint, animationDelay: `${i * 60}ms` }}
+              className="serving-guide-row"
+              style={{ "--sg": g.accent, "--sg-soft": g.tint, animationDelay: `${i * 60}ms` }}
             >
-              <div className="serving-row-head">
-                <div className="serving-badge">
-                  <span className="serving-badge-ico">{g.icon}</span>
+              <div className="serving-guide-row-head">
+                <div className="serving-guide-label">
+                  <span className="serving-guide-ico">{g.icon}</span>
                   <div>
-                    <span className="serving-badge-name">{g.label}</span>
-                    <span className="serving-badge-desc">{g.desc}</span>
+                    <span className="serving-guide-name">{g.label}</span>
+                    <span className="serving-guide-desc">{g.desc}</span>
                   </div>
                 </div>
 
-                <div className="serving-values">
-                  <strong>{_N.fmt(now)}</strong>
-                  <span>/ {_N.fmt(target)} 份</span>
+                <div className="serving-guide-values">
+                  {showProgress ? (
+                    <>
+                      <strong>{_N.fmt(current)}</strong>
+                      <span>/ {_N.fmt(target)} 份</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{_N.fmt(target)}</strong>
+                      <span>份</span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="serving-track">
-                <div className="serving-track-target" />
-                <div className="serving-track-fill" style={{ width: `${pct}%` }} />
-                {overPct > 0 ? <div className="serving-track-over" style={{ width: `${overPct}%` }} /> : null}
+              <div className="serving-guide-stickers" aria-label={`${g.label}份數圖示`}>
+                {states.map((state, index) => (
+                  <span
+                    key={`${g.id}-${index}`}
+                    className={`serving-guide-sticker is-${state}`}
+                    title={`${g.label} ${index + 1}`}
+                  >
+                    {g.icon}
+                  </span>
+                ))}
               </div>
 
-              <div className="serving-row-foot">
+              <div className="serving-guide-foot">
                 <span>建議 {_N.fmt(target)} 份</span>
-                <span>目前 {_N.fmt(now)} 份</span>
-                <span className={`serving-status is-${status}`}>
-                  {status === "ok" ? "✓ 剛剛好" : status === "over" ? `多 ${_N.fmt(Math.abs(diff))} 份` : `少 ${_N.fmt(Math.abs(diff))} 份`}
-                </span>
+                {showProgress ? (
+                  <>
+                    <span>目前 {_N.fmt(current)} 份</span>
+                    <span className={`serving-guide-status is-${status}`}>
+                      {status === "ok" ? "✓ 已達標" : status === "over" ? `多 ${_N.fmt(Math.abs(diff))} 份` : `少 ${_N.fmt(Math.abs(diff))} 份`}
+                    </span>
+                  </>
+                ) : (
+                  <span className="serving-guide-status is-plain">依建議份量排列圖示</span>
+                )}
               </div>
             </article>
           );
         })}
       </div>
     </article>
+  );
+}
+
+function ServingBars({ servings, rec }) {
+  return (
+    <ServingGuideBoard
+      targetServings={rec.recommended}
+      title="各類食物份數"
+      subtitle="這裡只顯示每日建議份量，讓你先看懂今天大概要吃到多少。"
+      showProgress={false}
+    />
   );
 }
 
@@ -669,3 +738,4 @@ function CalculatorPage({ profile, setProfile, servings, setServings }) {
 
 window.CalculatorPage = CalculatorPage;
 window.FormulaShowcase = FormulaShowcase;
+window.ServingGuideBoard = ServingGuideBoard;
