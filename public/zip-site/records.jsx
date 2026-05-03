@@ -555,6 +555,8 @@ function ServingTouchChart({ currentServings, targetServings }) {
     () => buildServingChartData(currentServings, targetServings),
     [currentServings, targetServings],
   );
+  const allCurrentZero = chartData.every((item) => item.current <= 0);
+  const totalCurrent = chartData.reduce((sum, item) => sum + item.current, 0);
   const suggestedId = useMemo(() => {
     return [...chartData]
       .sort((left, right) => right.current - left.current || right.target - left.target)[0]?.id
@@ -567,64 +569,128 @@ function ServingTouchChart({ currentServings, targetServings }) {
     setActiveId(suggestedId);
   }, [suggestedId]);
 
-  const chartMax = Math.max(
-    1,
-    ...chartData.map((item) => Math.max(item.current, item.target, RECORDING_UNIT)),
-  );
   const activeItem = chartData.find((item) => item.id === activeId) || chartData[0];
+  const rankedItems = [...chartData].sort((left, right) => right.current - left.current || right.target - left.target);
 
   if (!activeItem) return null;
+
+  const activeProgress = Math.min(100, activeItem.target > 0 ? (activeItem.current / activeItem.target) * 100 : 0);
+  const activeShare = totalCurrent > 0 ? (activeItem.current / totalCurrent) * 100 : 0;
+  const activeStatusText = Math.abs(activeItem.delta) < 0.1
+    ? "今天這一類剛好達標。"
+    : activeItem.delta > 0
+      ? `比建議多 ${window.NUTRITION.fmt(Math.abs(activeItem.delta))} 份。`
+      : `距離建議還少 ${window.NUTRITION.fmt(Math.abs(activeItem.delta))} 份。`;
+
+  const topHighlights = rankedItems
+    .filter((item) => item.current > 0)
+    .slice(0, 3);
 
   return (
     <article className="card serving-touch-board">
       <div className="card-eyebrow"><span aria-hidden="true">🫶</span>互動圖表</div>
       <h2 className="card-title">今天哪一類吃得比較多？</h2>
-      <p className="card-sub">滑過去或點一下每個色塊，就能看到今天在那一類累積了多少份。</p>
+      <p className="card-sub">滑過去或點一下下面的小卡，就能看到今天在那一類累積了多少份，整體會更像日常的進度總覽。</p>
 
-      <div className="serving-touch-detail" style={{ "--std": activeItem.color, "--stt": activeItem.tint }}>
-        <div className="serving-touch-badge" aria-hidden="true">{activeItem.icon}</div>
-        <div className="serving-touch-copy">
-          <span className="serving-touch-kicker">目前選到</span>
-          <strong>{activeItem.label}</strong>
-          <p>
-            今天這一類已累積 <b>{window.NUTRITION.fmt(activeItem.current)} 份</b>，
-            建議是 {window.NUTRITION.fmt(activeItem.target)} 份。
-          </p>
+      <div
+        className={"serving-touch-hero" + (allCurrentZero ? " is-empty" : "")}
+        style={{ "--std": activeItem.color, "--stt": activeItem.tint, "--sta": activeItem.accent }}
+      >
+        <div className="serving-touch-hero-visual">
+          <div className="serving-touch-hero-icon" aria-hidden="true">
+            {allCurrentZero ? "🌱" : activeItem.icon}
+          </div>
+          <div className="serving-touch-hero-mini">
+            {topHighlights.length > 0 ? (
+              topHighlights.map((item) => (
+                <span
+                  key={item.id}
+                  className={"serving-touch-hero-mini-pill" + (item.id === activeItem.id ? " is-active" : "")}
+                  style={{ "--pill": item.accent, "--pill-tint": item.tint }}
+                >
+                  <span aria-hidden="true">{item.icon}</span>
+                  {shortFoodGroupLabel(item.label)}
+                </span>
+              ))
+            ) : (
+              <span className="serving-touch-hero-empty">今天還沒開始記錄六大類份數</span>
+            )}
+          </div>
         </div>
-        <div className="serving-touch-metrics">
-          <span>{formatPercent(Math.min(activeItem.completion, 1.4) * 100)} 達成度</span>
-          <span>
-            {Math.abs(activeItem.delta) < 0.1
-              ? "剛好達標"
-              : activeItem.delta >= 0
-                ? `多 ${window.NUTRITION.fmt(Math.abs(activeItem.delta))} 份`
-                : `少 ${window.NUTRITION.fmt(Math.abs(activeItem.delta))} 份`}
-          </span>
+
+        <div className="serving-touch-hero-copy">
+          <span className="serving-touch-kicker">{allCurrentZero ? "今日狀態" : "目前主角"}</span>
+          <strong>{allCurrentZero ? "先從第一份開始記錄" : activeItem.label}</strong>
+          <p>
+            {allCurrentZero
+              ? "現在六大類都還是 0 份，先點上方快速記錄區加入早餐、午餐、晚餐、點心或宵夜。"
+              : <>今天這一類已累積 <b>{window.NUTRITION.fmt(activeItem.current)} 份</b>，建議是 {window.NUTRITION.fmt(activeItem.target)} 份。{activeStatusText}</>}
+          </p>
+
+          <div className="serving-touch-hero-pills">
+            <span className="serving-touch-hero-pill">
+              <b>{window.NUTRITION.fmt(activeItem.current)}</b> 份目前累積
+            </span>
+            <span className="serving-touch-hero-pill">
+              <b>{window.NUTRITION.fmt(activeItem.target)}</b> 份今日建議
+            </span>
+            <span className="serving-touch-hero-pill">
+              <b>{formatPercent(activeProgress)}</b> 達成度
+            </span>
+          </div>
+        </div>
+
+        <div className="serving-touch-hero-side">
+          <div className="serving-touch-hero-meter">
+            <div className="serving-touch-hero-meter-ring" style={{ "--progress": `${activeProgress}%` }}>
+              <span>{formatPercent(activeProgress)}</span>
+            </div>
+            <small>{allCurrentZero ? "尚未開始" : "目前完成度"}</small>
+          </div>
+          <div className="serving-touch-hero-note">
+            <b>{formatPercent(activeShare)}</b>
+            <span>占今天已記錄份數</span>
+          </div>
         </div>
       </div>
 
-      <div className="serving-touch-chart" role="list" aria-label="今日各類食物份數互動圖表">
+      <div className="serving-touch-grid" role="list" aria-label="今日各類食物份數互動圖表">
         {chartData.map((item) => {
-          const heightPercent = item.current > 0 ? Math.max(10, (item.current / chartMax) * 100) : 0;
-          const targetPercent = Math.min(100, (item.target / chartMax) * 100);
+          const progress = Math.min(100, item.target > 0 ? (item.current / item.target) * 100 : 0);
+          const statusLabel = Math.abs(item.delta) < 0.1
+            ? "剛好"
+            : item.delta > 0
+              ? `多 ${window.NUTRITION.fmt(Math.abs(item.delta))}`
+              : `少 ${window.NUTRITION.fmt(Math.abs(item.delta))}`;
           return (
             <button
               key={item.id}
               type="button"
               role="listitem"
-              className={"serving-touch-bar" + (item.id === activeId ? " is-active" : "")}
-              style={{ "--st": item.accent, "--std": item.color, "--stt": item.tint, "--fill": `${heightPercent}%`, "--target": `${targetPercent}%` }}
+              className={"serving-touch-card" + (item.id === activeId ? " is-active" : "")}
+              style={{ "--st": item.accent, "--std": item.color, "--stt": item.tint, "--progress": `${progress}%` }}
               onMouseEnter={() => setActiveId(item.id)}
               onFocus={() => setActiveId(item.id)}
               onClick={() => setActiveId(item.id)}
             >
-              <span className="serving-touch-bar-top">{item.icon}</span>
-              <span className="serving-touch-track">
-                <span className="serving-touch-fill" />
-                <span className="serving-touch-target" />
-              </span>
-              <span className="serving-touch-label">{shortFoodGroupLabel(item.label)}</span>
-              <span className="serving-touch-value">{window.NUTRITION.fmt(item.current)} 份</span>
+              <div className="serving-touch-card-head">
+                <span className="serving-touch-card-badge" aria-hidden="true">{item.icon}</span>
+                <span className="serving-touch-card-status">{statusLabel}</span>
+              </div>
+
+              <div className="serving-touch-card-copy">
+                <strong>{shortFoodGroupLabel(item.label)}</strong>
+                <span>{window.NUTRITION.fmt(item.current)} / {window.NUTRITION.fmt(item.target)} 份</span>
+              </div>
+
+              <div className="serving-touch-card-progress">
+                <span className="serving-touch-card-progress-fill" />
+              </div>
+
+              <div className="serving-touch-card-foot">
+                <span>{item.current > 0 ? `${formatPercent(progress)} 已完成` : "今天還沒吃到"}</span>
+                <span>{item.desc}</span>
+              </div>
             </button>
           );
         })}
