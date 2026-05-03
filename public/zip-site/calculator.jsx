@@ -425,51 +425,59 @@ function MacroDonut({ summary }) {
         <div className="mealboard" role="img" aria-label="今日餐盤三大營養素比例">
           <div className="mealboard-note">{Math.round(total)} kcal · 今日餐盤</div>
           <div className="mealboard-rim" />
-          <div className="mealboard-grid">
-            <section
-              className={`meal-slot meal-slot-main is-${mainMacro.key}`}
-              style={{ "--slot-color": mainMacro.color, "--slot-deep": mainMacro.deep, "--slot-soft": mainMacro.soft }}
-            >
-              <div className="meal-chip">
-                <span className="meal-chip-ico" aria-hidden="true">{mainMacro.ico}</span>
-                <span>{mainMacro.label}</span>
-              </div>
-              <div className="meal-slot-percent">{mainMacro.ratio.toFixed(1)}%</div>
-              <div className="meal-slot-copy">{mainMacro.role}</div>
-              <div className="meal-slot-meta">
-                <span>{Math.round(mainMacro.g)} g</span>
-                <span>{Math.round(mainMacro.kcal)} kcal</span>
-              </div>
-            </section>
+          <div className="mealboard-body">
+            <div className="mealboard-grid">
+              <section
+                className={`meal-slot meal-slot-main is-${mainMacro.key}`}
+                style={{ "--slot-color": mainMacro.color, "--slot-deep": mainMacro.deep, "--slot-soft": mainMacro.soft }}
+              >
+                <div className="meal-chip">
+                  <span className="meal-chip-ico" aria-hidden="true">{mainMacro.ico}</span>
+                  <span>{mainMacro.label}</span>
+                </div>
+                <div className="meal-slot-percent">{mainMacro.ratio.toFixed(1)}%</div>
+                <div className="meal-slot-copy">{mainMacro.role}</div>
+                <div className="meal-slot-meta">
+                  <span>{Math.round(mainMacro.g)} g</span>
+                  <span>{Math.round(mainMacro.kcal)} kcal</span>
+                </div>
+              </section>
 
-            <div className="meal-slot-stack">
-              {compactMacros.map((d) => (
-                <section
-                  key={d.key}
-                  className={`meal-slot meal-slot-small is-${d.key}`}
-                  style={{ "--slot-color": d.color, "--slot-deep": d.deep, "--slot-soft": d.soft }}
-                >
-                  <div className="meal-chip">
-                    <span className="meal-chip-ico" aria-hidden="true">{d.ico}</span>
-                    <span>{d.label}</span>
-                  </div>
-                  <div className="meal-slot-percent">{d.ratio.toFixed(1)}%</div>
-                  <div className="meal-slot-meta">
-                    <span>{Math.round(d.g)} g</span>
-                    <span>{Math.round(d.kcal)} kcal</span>
-                  </div>
-                </section>
-              ))}
+              <div className="meal-slot-stack">
+                {compactMacros.map((d) => (
+                  <section
+                    key={d.key}
+                    className={`meal-slot meal-slot-small is-${d.key}`}
+                    style={{ "--slot-color": d.color, "--slot-deep": d.deep, "--slot-soft": d.soft }}
+                  >
+                    <div className="meal-chip">
+                      <span className="meal-chip-ico" aria-hidden="true">{d.ico}</span>
+                      <span>{d.label}</span>
+                    </div>
+                    <div className="meal-slot-percent">{d.ratio.toFixed(1)}%</div>
+                    <div className="meal-slot-meta">
+                      <span>{Math.round(d.g)} g</span>
+                      <span>{Math.round(d.kcal)} kcal</span>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </div>
+
+            <div className="mealboard-caption">
+              <span className="mealboard-caption-pill">
+                <span className="mealboard-caption-badge" aria-hidden="true">★</span>
+                <b>今天最多</b>
+                <span>{mainMacro.label}</span>
+              </span>
+              <span className="mealboard-caption-note">像日常便當盤一樣，最大格代表今天最主要的能量來源。</span>
             </div>
           </div>
 
-          <div className="mealboard-caption">
-            <span className="mealboard-caption-pill">
-              <span className="mealboard-caption-badge" aria-hidden="true">★</span>
-              <b>今天最多</b>
-              <span>{mainMacro.label}</span>
-            </span>
-            <span className="mealboard-caption-note">像日常便當盤一樣，最大格代表今天最主要的能量來源。</span>
+          <div className="mealboard-garnish" aria-hidden="true">
+            <span className="garnish-dot is-red" />
+            <span className="garnish-dot is-green" />
+            <span className="garnish-leaf" />
           </div>
 
           <div className="mealboard-chopsticks" aria-hidden="true">
