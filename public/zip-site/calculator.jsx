@@ -414,6 +414,7 @@ function MacroDonut({ summary }) {
   const sorted = [...data].sort((a, b) => b.ratio - a.ratio);
   const [mainMacro, secondMacro, thirdMacro] = sorted;
   const compactMacros = [secondMacro, thirdMacro].filter(Boolean);
+  const companionLabels = compactMacros.map((d) => d.label).join("、");
 
   return (
     <article className="card macro-card">
@@ -431,12 +432,17 @@ function MacroDonut({ summary }) {
                 className={`meal-slot meal-slot-main is-${mainMacro.key}`}
                 style={{ "--slot-color": mainMacro.color, "--slot-deep": mainMacro.deep, "--slot-soft": mainMacro.soft }}
               >
-                <div className="meal-chip">
-                  <span className="meal-chip-ico" aria-hidden="true">{mainMacro.ico}</span>
-                  <span>{mainMacro.label}</span>
+                <div className="meal-slot-top">
+                  <div className="meal-chip">
+                    <span className="meal-chip-ico" aria-hidden="true">{mainMacro.ico}</span>
+                    <span>{mainMacro.label}</span>
+                  </div>
+                  <span className="meal-slot-flag">主力來源</span>
                 </div>
-                <div className="meal-slot-percent">{mainMacro.ratio.toFixed(1)}%</div>
-                <div className="meal-slot-copy">{mainMacro.role}</div>
+                <div className="meal-slot-center">
+                  <div className="meal-slot-percent">{mainMacro.ratio.toFixed(1)}%</div>
+                  <div className="meal-slot-copy">{mainMacro.role}</div>
+                </div>
                 <div className="meal-slot-meta">
                   <span>{Math.round(mainMacro.g)} g</span>
                   <span>{Math.round(mainMacro.kcal)} kcal</span>
@@ -450,11 +456,16 @@ function MacroDonut({ summary }) {
                     className={`meal-slot meal-slot-small is-${d.key}`}
                     style={{ "--slot-color": d.color, "--slot-deep": d.deep, "--slot-soft": d.soft }}
                   >
-                    <div className="meal-chip">
-                      <span className="meal-chip-ico" aria-hidden="true">{d.ico}</span>
-                      <span>{d.label}</span>
+                    <div className="meal-slot-top">
+                      <div className="meal-chip">
+                        <span className="meal-chip-ico" aria-hidden="true">{d.ico}</span>
+                        <span>{d.label}</span>
+                      </div>
+                      <span className="meal-slot-flag is-soft">搭配</span>
                     </div>
-                    <div className="meal-slot-percent">{d.ratio.toFixed(1)}%</div>
+                    <div className="meal-slot-center">
+                      <div className="meal-slot-percent">{d.ratio.toFixed(1)}%</div>
+                    </div>
                     <div className="meal-slot-meta">
                       <span>{Math.round(d.g)} g</span>
                       <span>{Math.round(d.kcal)} kcal</span>
@@ -487,6 +498,29 @@ function MacroDonut({ summary }) {
         </div>
 
         <div className="macro-list">
+          <div className="macro-summary">
+            <div className="macro-summary-head">
+              <span className="macro-summary-badge">今日分布摘要</span>
+              <b>{Math.round(total)} kcal</b>
+            </div>
+            <p className="macro-summary-copy">
+              今天以 <strong>{mainMacro.label}</strong> 為主，另外搭配 {companionLabels}，整體看起來更像日常一餐的營養分布。
+            </p>
+            <div className="macro-summary-legend">
+              {data.map((d) => (
+                <span
+                  key={d.key}
+                  className="macro-summary-pill"
+                  style={{ "--mp": d.color, "--mp-deep": d.deep, "--mp-soft": d.soft }}
+                >
+                  <span className="macro-summary-pill-ico" aria-hidden="true">{d.ico}</span>
+                  <b>{d.label}</b>
+                  <span>{d.ratio.toFixed(1)}%</span>
+                </span>
+              ))}
+            </div>
+          </div>
+
           {data.map((d, i) => (
             <article
               key={d.key}
@@ -503,17 +537,20 @@ function MacroDonut({ summary }) {
                   <span className="macro-story-ico">{d.ico}</span>
                   <b>{d.label}</b>
                 </span>
-                <span className="macro-story-pct">{d.ratio.toFixed(1)}%</span>
+                <span className="macro-story-tag">{d.key === mainMacro.key ? "今日主角" : "一起搭配"}</span>
               </div>
 
-              <div className="macro-story-stat">
-                <div className="macro-story-kcal">
-                  <strong>{Math.round(d.kcal)}</strong>
-                  <span>kcal</span>
-                </div>
-                <div className="macro-story-grams">
-                  <strong>{Math.round(d.g)}</strong>
-                  <span>g</span>
+              <div className="macro-story-body">
+                <span className="macro-story-pct">{d.ratio.toFixed(1)}%</span>
+                <div className="macro-story-stat">
+                  <div className="macro-story-kcal">
+                    <strong>{Math.round(d.kcal)}</strong>
+                    <span>kcal</span>
+                  </div>
+                  <div className="macro-story-grams">
+                    <strong>{Math.round(d.g)}</strong>
+                    <span>g</span>
+                  </div>
                 </div>
               </div>
 
@@ -523,7 +560,7 @@ function MacroDonut({ summary }) {
 
               <div className="macro-story-foot">
                 <span>{d.role}</span>
-                <span className="macro-story-tag">{d.key === mainMacro.key ? "今日主角" : "一起搭配"}</span>
+                <span className="macro-story-note">{d.key === mainMacro.key ? "今天比例最高" : "一起搭配更均衡"}</span>
               </div>
             </article>
           ))}
