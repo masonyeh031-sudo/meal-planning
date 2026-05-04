@@ -82,8 +82,8 @@ function PrinciplesPage({ profile }) {
             <h3 className="prn-title">反推每日建議份數</h3>
             <p className="prn-desc">得到 CHO、PRO、FAT 克數後，再利用食物代換表換算成天該吃的食物份數。</p>
             <div className="prn-formula">
-              <div><b>全穀根莖類、蔬菜類、水果類</b><span>由 CHO 反推</span></div>
-              <div><b>豆魚肉蛋類</b><span>由 PRO 反推</span></div>
+              <div><b>全穀雜糧類、蔬菜類、水果類</b><span>由 CHO 反推</span></div>
+              <div><b>豆魚蛋肉類</b><span>由 PRO 反推</span></div>
               <div><b>油脂與堅果種子類</b><span>由 FAT 反推</span></div>
             </div>
             <div className="prn-example">這是一種簡化版估算方式，目的是讓使用者容易理解。</div>
@@ -105,9 +105,9 @@ function PrinciplesPage({ profile }) {
             </thead>
             <tbody>
               {[
-                { ico: "🍚", name: "全穀根莖類", cho: 15, pro: 2, fat: 0, eg: "飯、麵、地瓜、吐司" },
-                { ico: "🥛", name: "奶類",       cho: 12, pro: 8, fat: 8, eg: "牛奶、優格、無糖優酪" },
-                { ico: "🥚", name: "豆魚肉蛋類", cho: 0,  pro: 7, fat: 5, eg: "雞肉、魚、雞蛋、豆腐" },
+                { ico: "🍚", name: "全穀雜糧類", cho: 15, pro: 2, fat: 0, eg: "飯、麵、地瓜、吐司" },
+                { ico: "🥛", name: "乳品類",     cho: 12, pro: 8, fat: 8, eg: "牛奶、優格、無糖豆漿" },
+                { ico: "🥚", name: "豆魚蛋肉類", cho: 0,  pro: 7, fat: 5, eg: "雞肉、魚、雞蛋、豆腐" },
                 { ico: "🥦", name: "蔬菜類",     cho: 5,  pro: 1, fat: 0, eg: "青菜、花椰菜、菇類" },
                 { ico: "🍎", name: "水果類",     cho: 15, pro: 0, fat: 0, eg: "蘋果、香蕉、芭樂" },
                 { ico: "🥜", name: "油脂與堅果種子類", cho: 0, pro: 0, fat: 5, eg: "堅果、橄欖油、酪梨" },
@@ -129,11 +129,11 @@ function PrinciplesPage({ profile }) {
           <h2 className="section-title">份數怎麼由營養素反推</h2>
         </div>
         <div className="prn-derive">
-          <article className="derive-card is-1"><b>🍚 全穀根莖類</b><span>建議份數 = CHO × 60% ÷ 15</span></article>
+          <article className="derive-card is-1"><b>🍚 全穀雜糧類</b><span>建議份數 = CHO × 60% ÷ 15</span></article>
           <article className="derive-card is-2"><b>🍎 水果類</b><span>建議份數 = CHO × 20% ÷ 15</span></article>
           <article className="derive-card is-3"><b>🥦 蔬菜類</b><span>建議份數 = CHO × 20% ÷ 5</span></article>
-          <article className="derive-card is-4"><b>🥚 豆魚肉蛋類</b><span>建議份數 = PRO ÷ 7</span></article>
-          <article className="derive-card is-5"><b>🥛 奶類</b><span>建議固定 1～2 份，常用 2 份</span></article>
+          <article className="derive-card is-4"><b>🥚 豆魚蛋肉類</b><span>建議份數 = PRO ÷ 7</span></article>
+          <article className="derive-card is-5"><b>🥛 乳品類</b><span>建議固定 1～2 份，常用 2 份</span></article>
           <article className="derive-card is-6"><b>🥜 油脂與堅果種子類</b><span>建議份數 = FAT ÷ 5</span></article>
         </div>
         <div className="disclaimer">

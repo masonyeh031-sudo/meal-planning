@@ -15,10 +15,23 @@ function FoodGuidePage() {
           <span className="float f7">🍞</span>
           <span className="float f8">🍇</span>
         </div>
-        <span className="hero-eyebrow"><span>🍱</span><span>SIX FOOD GROUPS</span></span>
+        <span className="hero-eyebrow"><span>🍱</span><span>六大類食物指南</span></span>
         <h1 className="big-title">六大類食物指南</h1>
-        <p className="big-sub">用簡單清楚的方式，帶你認識每天飲食中不可缺少的六大類食物。</p>
+        <p className="big-sub">用最簡單的方式，帶你看懂每天該怎麼吃，也快速認識每一份大概是什麼樣子。</p>
       </section>
+
+      <section className="shell guide-quickboard">
+        {_NG.FOOD_GUIDE.map((g) => (
+          <article key={g.id} className="guide-quick-card">
+            <span className="guide-quick-ico" aria-hidden="true">{g.icon}</span>
+            <div>
+              <strong>{g.title}</strong>
+              <p>{g.portion.split("，")[0]}</p>
+            </div>
+          </article>
+        ))}
+      </section>
+
       <section className="shell guide-grid">
         {_NG.FOOD_GUIDE.map((g, i) => (
           <article

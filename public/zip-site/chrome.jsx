@@ -4,9 +4,9 @@ const N = window.NUTRITION;
 
 const PAGES = [
   { id: "calculator", label: "飲食計算器", icon: "🧮" },
-  { id: "guide",      label: "六大類食物", icon: "🍱" },
+  { id: "guide",      label: "六大類食物指南", icon: "🍱" },
   { id: "principles", label: "計算原理",   icon: "📐" },
-  { id: "records",    label: "七日紀錄",   icon: "📔" },
+  { id: "records",    label: "七天飲食紀錄",   icon: "📔" },
 ];
 
 function TopNav({ page, onChange }) {
@@ -15,7 +15,10 @@ function TopNav({ page, onChange }) {
       <div className="nav-inner">
         <div className="brand">
           <div className="brand-mark">🥗</div>
-          <span>飲食規劃</span>
+          <div className="brand-copy">
+            <span>飲食規劃</span>
+            <small>每日份數與營養素</small>
+          </div>
         </div>
         <div className="nav-links" role="tablist">
           {PAGES.map(p => (

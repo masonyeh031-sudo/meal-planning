@@ -2,34 +2,94 @@
 const _N = window.NUTRITION;
 
 function Hero() {
+  const scrollToForm = () => {
+    document.getElementById("calculator-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const openPrinciples = () => {
+    window.location.hash = "principles";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <section className="hero shell">
-      <span className="hero-eyebrow">
-        <span aria-hidden="true">🌱</span>
-        <span>Daily Nutrition Planner</span>
-      </span>
-      <h1 className="big-title">
-        每日飲食份數與<em>營養素計算器</em><span className="wave">🌱</span>
-      </h1>
-      <p className="big-sub">
-        輸入基本資料，快速估算每日熱量、六大類食物份數與三大營養素。
-        清楚、可愛、好上手 — 適合學生作業、營養課程與日常自我管理。
-      </p>
+      <div className="hero-grid">
+        <div className="hero-copy">
+          <span className="hero-eyebrow">
+            <span aria-hidden="true">🌱</span>
+            <span>每日飲食規劃小幫手</span>
+          </span>
+          <h1 className="big-title">
+            每日飲食份數與<em>營養素計算器</em><span className="wave">🌱</span>
+          </h1>
+          <p className="big-sub">
+            輸入基本資料，快速估算每日熱量、六大類食物份數與三大營養素，幫助你更清楚規劃一天的飲食。
+          </p>
 
-      <div className="stepper">
-        {[
-          { n: "01", t: "輸入資料", d: "身高、體重、年齡與目標", ico: "📝" },
-          { n: "02", t: "查看建議", d: "系統自動推薦熱量與份數", ico: "✨" },
-          { n: "03", t: "微調份數", d: "依喜好微調食物份數", ico: "🎚️" },
-          { n: "04", t: "查看圖表", d: "即時看見營養素分配", ico: "📊" },
-        ].map((s, i) => (
-          <article key={s.n} className="step-card" style={{ animationDelay: `${i * 80}ms` }}>
-            <span className="step-num">{s.n}</span>
-            <span className="step-ico" aria-hidden="true">{s.ico}</span>
-            <h3 className="step-title">{s.t}</h3>
-            <p className="step-desc">{s.d}</p>
-          </article>
-        ))}
+          <div className="hero-actions">
+            <button className="btn is-primary" onClick={scrollToForm}>
+              <span aria-hidden="true">✨</span>
+              開始計算
+            </button>
+            <button className="btn" onClick={openPrinciples}>
+              <span aria-hidden="true">📐</span>
+              查看計算原理
+            </button>
+          </div>
+
+          <div className="hero-helper">
+            <span>即時計算熱量</span>
+            <span>可微調六大類份數</span>
+            <span>支援七日飲食紀錄</span>
+          </div>
+        </div>
+
+        <div className="hero-visual" aria-hidden="true">
+          <div className="hero-visual-card">
+            <div className="hero-visual-badge">🥗 今日飲食儀表板</div>
+            <div className="hero-visual-plate">
+              <span className="hero-food is-rice">🍚</span>
+              <span className="hero-food is-protein">🍗</span>
+              <span className="hero-food is-veg">🥦</span>
+              <span className="hero-food is-fruit">🍎</span>
+            </div>
+            <div className="hero-visual-grid">
+              <article className="hero-visual-chip">
+                <strong>每日熱量</strong>
+                <span>依體重與目標估算</span>
+              </article>
+              <article className="hero-visual-chip">
+                <strong>六大類份數</strong>
+                <span>直接看懂一天怎麼吃</span>
+              </article>
+              <article className="hero-visual-chip">
+                <strong>三大營養素</strong>
+                <span>CHO / PRO / FAT 即時更新</span>
+              </article>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="stepper-block">
+        <div className="stepper-head">
+          <span className="section-eyebrow">使用流程</span>
+          <p>照著這 4 個步驟走，就能快速完成今天的飲食估算與份數調整。</p>
+        </div>
+        <div className="stepper">
+          {[
+            { n: "01", t: "輸入基本資料", d: "先填寫身高、體重、年齡、性別、活動量與目標。", ico: "📝" },
+            { n: "02", t: "查看每日建議", d: "系統會自動估算每日熱量、BMI 與營養素。", ico: "📌" },
+            { n: "03", t: "微調六大類食物份數", d: "可依習慣調整每類份數，結果會同步更新。", ico: "🎚️" },
+            { n: "04", t: "查看營養素與明細結果", d: "用圖表與表格一起確認今天的飲食安排。", ico: "📊" },
+          ].map((s, i) => (
+            <article key={s.n} className="step-card" style={{ animationDelay: `${i * 80}ms` }}>
+              <span className="step-num">{s.n}</span>
+              <span className="step-ico" aria-hidden="true">{s.ico}</span>
+              <h3 className="step-title">{s.t}</h3>
+              <p className="step-desc">{s.d}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -42,13 +102,13 @@ function ProfileForm({ profile, setProfile }) {
     if (Number.isFinite(n)) set(k, n);
   };
   return (
-    <article className="card is-tinted-green">
+    <article id="calculator-form" className="card is-tinted-green form-card">
       <div className="card-eyebrow">
         <span aria-hidden="true">📝</span>
-        <span>Step 01 · 輸入區</span>
+        <span>Step 01 · 輸入基本資料</span>
       </div>
       <h2 className="card-title">填寫基本資料</h2>
-      <p className="card-sub">先填寫基本資料，系統會自動幫你估算適合的飲食份數。</p>
+      <p className="card-sub">先填寫基本資料，系統會自動幫你估算每日熱量與飲食份數。</p>
 
       <div className="form-grid">
         <label className="field">
@@ -88,7 +148,7 @@ function ProfileForm({ profile, setProfile }) {
 
       <div className="help-tip">
         <span className="ico" aria-hidden="true">💡</span>
-        <span>調整任一欄位後，右側建議與圖表會即時更新。資料會自動儲存在你的瀏覽器中。</span>
+        <span>調整任一欄位後，建議熱量、六大類份數與圖表都會即時更新，資料也會自動儲存在你的瀏覽器中。</span>
       </div>
     </article>
   );
@@ -113,13 +173,24 @@ function StatCard({ kind, ico, label, value, unit, hint, fillPct, fillColor }) {
 }
 
 function Dashboard({ rec, summary, profile, calorieDelta }) {
-  const { fmt } = _N;
   const targetK = rec.target || 1;
   const curK = summary.total;
   const ratioPct = (curK / targetK) * 100;
   const choPct = summary.ratios.cho;
   const proPct = summary.ratios.pro;
   const fatPct = summary.ratios.fat;
+  const deltaAbs = Math.round(Math.abs(calorieDelta));
+  const isNearTarget = deltaAbs <= 120;
+  const deltaHint = isNearTarget
+    ? "很接近今天的建議目標"
+    : calorieDelta > 0
+      ? "目前略高於建議，可微調份數"
+      : "目前略低於建議，可以增加一些份數";
+  const deltaColor = isNearTarget
+    ? "var(--green-deep)"
+    : calorieDelta > 0
+      ? "var(--orange-deep)"
+      : "var(--kcal-deep)";
 
   const goal = _N.GOAL_OPTIONS.find(g => g.value === profile.goal);
 
@@ -134,34 +205,39 @@ function Dashboard({ rec, summary, profile, calorieDelta }) {
       <StatCard
         kind="cur" ico="🍽️" label="目前份數總熱量"
         value={Math.round(curK)} unit="kcal"
-        hint={Math.abs(calorieDelta) < 1 ? "與建議值接近 ✓" :
-              calorieDelta > 0 ? `高於建議 ${Math.round(calorieDelta)} kcal` :
-              `低於建議 ${Math.round(Math.abs(calorieDelta))} kcal`}
+        hint="依目前份數自動換算的總熱量"
         fillPct={ratioPct} fillColor="var(--orange)"
       />
       <StatCard
         kind="bmi" ico="🎯" label="BMI 指數"
         value={rec.bmi.toFixed(1)} unit={rec.bmiStatus}
-        hint="由身高與體重估算"
+        hint="由身高與體重估算，作為一般體態參考"
         fillPct={Math.min(100, (rec.bmi / 30) * 100)} fillColor="var(--bmi)"
       />
       <StatCard
         kind="cho" ico="🌾" label="CHO 碳水"
         value={Math.round(summary.totals.cho)} unit="g"
-        hint={`主要能量來源 · ${choPct.toFixed(0)}%`}
+        hint="主要能量來源"
         fillPct={choPct} fillColor="var(--cho)"
       />
       <StatCard
         kind="pro" ico="🍗" label="PRO 蛋白質"
         value={Math.round(summary.totals.pro)} unit="g"
-        hint={`修復與肌肉生長 · ${proPct.toFixed(0)}%`}
+        hint="幫助修復與肌肉生長"
         fillPct={proPct} fillColor="var(--pro)"
       />
       <StatCard
         kind="fat" ico="🥑" label="FAT 脂肪"
         value={Math.round(summary.totals.fat)} unit="g"
-        hint={`必需脂肪酸 · ${fatPct.toFixed(0)}%`}
+        hint="提供身體所需脂溶性營養"
         fillPct={fatPct} fillColor="var(--fat)"
+      />
+      <StatCard
+        kind="delta" ico="🧭" label="熱量差距提示"
+        value={calorieDelta > 0 ? `+${deltaAbs}` : calorieDelta < 0 ? `-${deltaAbs}` : "0"} unit="kcal"
+        hint={deltaHint}
+        fillPct={Math.max(8, 100 - (deltaAbs / targetK) * 100)}
+        fillColor={deltaColor}
       />
     </div>
   );
@@ -702,8 +778,8 @@ function ServingBars({ servings, rec }) {
   return (
     <ServingGuideBoard
       targetServings={rec.recommended}
-      title="各類食物份數"
-      subtitle="這裡只顯示每日建議份量，讓你先看懂今天大概要吃到多少。"
+      title="六大類食物份數建議"
+      subtitle="先看今天建議吃到的份量，再決定三餐和點心要怎麼分配。"
       showProgress={false}
     />
   );
@@ -716,6 +792,7 @@ function DetailsTable({ summary }) {
     <article className="card">
       <div className="card-eyebrow"><span aria-hidden="true">📋</span>明細表</div>
       <h2 className="card-title">每類食物計算明細</h2>
+      <p className="table-intro">下方表格會依照目前份數，自動計算各類食物提供的營養素。</p>
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -768,7 +845,14 @@ function CalculatorPage({ profile, setProfile, servings, setServings }) {
       <section className="shell workspace">
         <ProfileForm profile={profile} setProfile={setProfile} />
         <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
-          <Dashboard rec={rec} summary={summary} profile={profile} calorieDelta={delta} />
+          <div className="dashboard-section">
+            <SectionTitle
+              eyebrow="Step 02 · 查看每日建議"
+              title="先看今天的飲食 Dashboard"
+              sub="把每日建議熱量、目前份數總熱量、BMI、三大營養素與熱量差距整理成一眼就懂的卡片。"
+            />
+            <Dashboard rec={rec} summary={summary} profile={profile} calorieDelta={delta} />
+          </div>
           <ServingsEditor servings={servings} setServings={setServings} rec={rec} />
           <div className="chart-grid">
             <MacroDonut summary={summary} />
