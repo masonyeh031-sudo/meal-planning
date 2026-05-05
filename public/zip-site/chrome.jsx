@@ -4,6 +4,7 @@ const N = window.NUTRITION;
 
 const PAGES = [
   { id: "calculator", label: "飲食計算器", icon: "🧮" },
+  { id: "meal-guide", label: "三餐怎麼吃", icon: "🍽️" },
   { id: "guide",      label: "六大類食物指南", icon: "🍱" },
   { id: "principles", label: "計算原理",   icon: "📐" },
   { id: "records",    label: "七天飲食紀錄",   icon: "📔" },

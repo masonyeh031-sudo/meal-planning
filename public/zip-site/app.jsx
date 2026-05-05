@@ -94,6 +94,7 @@ function App() {
           servings={servings} setServings={setServings}
         />
       )}
+      {page === "meal-guide" && <MealGuidePage />}
       {page === "guide" && <FoodGuidePage />}
       {page === "principles" && <PrinciplesPage profile={profile} />}
       {page === "records" && (
