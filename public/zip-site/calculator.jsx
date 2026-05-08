@@ -1,874 +1,390 @@
-// ===== Calculator page =====
-const _N = window.NUTRITION;
+// Calculator page — focus screen with live calculation, drag servings, donut/bar animations.
 
-function Hero() {
-  const scrollToForm = () => {
-    document.getElementById("calculator-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-  const openPrinciples = () => {
-    window.location.hash = "principles";
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+const {
+  GOAL_OPTIONS, ACTIVITY_OPTIONS, SEX_OPTIONS, FOOD_GROUPS, SERVING_LIMITS,
+  buildRecommendation, nutritionFromServings, clampServing, recommendedCalories,
+  bmiOf, bmiStatus,
+} = window;
 
-  return (
-    <section className="hero shell">
-      <div className="hero-grid">
-        <div className="hero-copy">
-          <span className="hero-eyebrow">
-            <span aria-hidden="true">🌱</span>
-            <span>每日飲食規劃小幫手</span>
-          </span>
-          <h1 className="big-title">
-            每日飲食份數與<em>營養素計算器</em><span className="wave">🌱</span>
-          </h1>
-          <p className="big-sub">
-            輸入基本資料，快速估算每日熱量、六大類食物份數與三大營養素，幫助你更清楚規劃一天的飲食。
-          </p>
+const DEFAULT_PROFILE = { heightCm: 170, weightKg: 65, age: 28, sex: "female", activity: "medium", goal: "maintain" };
 
-          <div className="hero-actions">
-            <button className="btn is-primary" onClick={scrollToForm}>
-              <span aria-hidden="true">✨</span>
-              開始計算
-            </button>
-            <button className="btn" onClick={openPrinciples}>
-              <span aria-hidden="true">📐</span>
-              查看計算原理
-            </button>
-          </div>
+const EXPORT_ACTIONS = [
+  { id: "pdf", label: "匯出 PDF", icon: "PDF" },
+  { id: "jpg", label: "匯出 JPG", icon: "JPG" },
+  { id: "csv", label: "Google CSV", icon: "CSV" },
+  { id: "xls", label: "匯出 Excel", icon: "XLS" },
+];
 
-          <div className="hero-helper">
-            <span>即時計算熱量</span>
-            <span>可微調六大類份數</span>
-            <span>支援七日飲食紀錄</span>
-          </div>
-        </div>
-
-        <div className="hero-visual" aria-hidden="true">
-          <div className="hero-visual-card">
-            <div className="hero-visual-badge">🥗 今日飲食儀表板</div>
-            <div className="hero-visual-plate">
-              <span className="hero-food is-rice">🍚</span>
-              <span className="hero-food is-protein">🍗</span>
-              <span className="hero-food is-veg">🥦</span>
-              <span className="hero-food is-fruit">🍎</span>
-            </div>
-            <div className="hero-visual-grid">
-              <article className="hero-visual-chip">
-                <strong>每日熱量</strong>
-                <span>依體重與目標估算</span>
-              </article>
-              <article className="hero-visual-chip">
-                <strong>六大類份數</strong>
-                <span>直接看懂一天怎麼吃</span>
-              </article>
-              <article className="hero-visual-chip">
-                <strong>三大營養素</strong>
-                <span>CHO / PRO / FAT 即時更新</span>
-              </article>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="stepper-block">
-        <div className="stepper-head">
-          <span className="section-eyebrow">使用流程</span>
-          <p>照著這 4 個步驟走，就能快速完成今天的飲食估算與份數調整。</p>
-        </div>
-        <div className="stepper">
-          {[
-            { n: "01", t: "輸入基本資料", d: "先填寫身高、體重、年齡、性別、活動量與目標。", ico: "📝" },
-            { n: "02", t: "查看每日建議", d: "系統會自動估算每日熱量、BMI 與營養素。", ico: "📌" },
-            { n: "03", t: "微調六大類食物份數", d: "可依習慣調整每類份數，結果會同步更新。", ico: "🎚️" },
-            { n: "04", t: "查看營養素與明細結果", d: "用圖表與表格一起確認今天的飲食安排。", ico: "📊" },
-          ].map((s, i) => (
-            <article key={s.n} className="step-card" style={{ animationDelay: `${i * 80}ms` }}>
-              <span className="step-num">{s.n}</span>
-              <span className="step-ico" aria-hidden="true">{s.ico}</span>
-              <h3 className="step-title">{s.t}</h3>
-              <p className="step-desc">{s.d}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem("nutrition.profile");
+    if (raw) return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+  } catch (e) {}
+  return DEFAULT_PROFILE;
 }
 
-function ProfileForm({ profile, setProfile }) {
-  const set = (k, v) => setProfile(p => ({ ...p, [k]: v }));
-  const setNum = (k, v) => {
-    const n = Number(v);
-    if (Number.isFinite(n)) set(k, n);
-  };
-  return (
-    <article id="calculator-form" className="card is-tinted-green form-card">
-      <div className="card-eyebrow">
-        <span aria-hidden="true">📝</span>
-        <span>Step 01 · 輸入基本資料</span>
-      </div>
-      <h2 className="card-title">填寫基本資料</h2>
-      <p className="card-sub">先填寫基本資料，系統會自動幫你估算每日熱量與飲食份數。</p>
+function CalculatorPage() {
+  const [profile, setProfile] = React.useState(loadProfile);
+  const [servings, setServings] = React.useState(() => buildRecommendation(loadProfile()).recommendedServings);
+  const [exporting, setExporting] = React.useState(null);
+  const [exportProgress, setExportProgress] = React.useState(0);
+  const [exportMsg, setExportMsg] = React.useState(null);
 
-      <div className="form-grid">
-        <label className="field">
-          <span className="field-label"><span className="ico">📏</span>身高 (cm)</span>
-          <input className="input" type="number" min="100" max="230" step="1"
-            value={profile.heightCm} onChange={e => setNum("heightCm", e.target.value)} />
-        </label>
-        <label className="field">
-          <span className="field-label"><span className="ico">⚖️</span>體重 (kg)</span>
-          <input className="input" type="number" min="30" max="200" step="0.1"
-            value={profile.weightKg} onChange={e => setNum("weightKg", e.target.value)} />
-        </label>
-        <label className="field">
-          <span className="field-label"><span className="ico">🎂</span>年齡</span>
-          <input className="input" type="number" min="10" max="100" step="1"
-            value={profile.age} onChange={e => setNum("age", e.target.value)} />
-        </label>
-        <label className="field">
-          <span className="field-label"><span className="ico">👤</span>性別</span>
-          <select className="select" value={profile.sex} onChange={e => set("sex", e.target.value)}>
-            {_N.SEX_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </label>
-        <label className="field">
-          <span className="field-label"><span className="ico">🏃</span>活動量</span>
-          <select className="select" value={profile.activity} onChange={e => set("activity", e.target.value)}>
-            {_N.ACTIVITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </label>
-        <label className="field">
-          <span className="field-label"><span className="ico">🎯</span>飲食目標</span>
-          <select className="select" value={profile.goal} onChange={e => set("goal", e.target.value)}>
-            {_N.GOAL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.icon} {o.label}</option>)}
-          </select>
-        </label>
-      </div>
+  const recommendation = React.useMemo(() => buildRecommendation(profile), [profile]);
 
-      <div className="help-tip">
-        <span className="ico" aria-hidden="true">💡</span>
-        <span>調整任一欄位後，建議熱量、六大類份數與圖表都會即時更新，資料也會自動儲存在你的瀏覽器中。</span>
-      </div>
-    </article>
-  );
-}
+  // Reset servings to recommendation when profile changes.
+  const profileKey = `${profile.heightCm}-${profile.weightKg}-${profile.age}-${profile.sex}-${profile.activity}-${profile.goal}`;
+  React.useEffect(() => {
+    setServings(recommendation.recommendedServings);
+  }, [profileKey]);
 
-function StatCard({ kind, ico, label, value, unit, hint, fillPct, fillColor }) {
-  return (
-    <article className={"stat is-" + kind}>
-      <div className="stat-head">
-        <span className="stat-label">{label}</span>
-        <span className="stat-ico" aria-hidden="true">{ico}</span>
-      </div>
-      <strong className="stat-value">
-        {value}{unit ? <small>{unit}</small> : null}
-      </strong>
-      {hint ? <p className="stat-hint">{hint}</p> : null}
-      {typeof fillPct === "number" ? (
-        <div className="stat-bar"><i style={{ width: `${Math.min(100, Math.max(2, fillPct))}%`, background: fillColor }} /></div>
-      ) : null}
-    </article>
-  );
-}
+  React.useEffect(() => {
+    try { localStorage.setItem("nutrition.profile", JSON.stringify(profile)); } catch (e) {}
+  }, [profile]);
 
-function Dashboard({ rec, summary, profile, calorieDelta }) {
-  const targetK = rec.target || 1;
-  const curK = summary.total;
-  const ratioPct = (curK / targetK) * 100;
-  const choPct = summary.ratios.cho;
-  const proPct = summary.ratios.pro;
-  const fatPct = summary.ratios.fat;
-  const deltaAbs = Math.round(Math.abs(calorieDelta));
-  const isNearTarget = deltaAbs <= 120;
-  const deltaHint = isNearTarget
-    ? "很接近今天的建議目標"
-    : calorieDelta > 0
-      ? "目前略高於建議，可微調份數"
-      : "目前略低於建議，可以增加一些份數";
-  const deltaColor = isNearTarget
-    ? "var(--green-deep)"
-    : calorieDelta > 0
-      ? "var(--orange-deep)"
-      : "var(--kcal-deep)";
+  const summary = React.useMemo(() => nutritionFromServings(servings), [servings]);
+  const calorieDelta = summary.totalCal - recommendation.targetCalories;
+  const isCustom = FOOD_GROUPS.some((g) => servings[g.id] !== recommendation.recommendedServings[g.id]);
 
-  const goal = _N.GOAL_OPTIONS.find(g => g.value === profile.goal);
+  const goalLabel = GOAL_OPTIONS.find((g) => g.value === profile.goal).label;
+  const activityLabel = ACTIVITY_OPTIONS.find((a) => a.value === profile.activity).label;
 
-  return (
-    <div className="dashboard">
-      <StatCard
-        kind="kcal" ico="🔥" label="每日建議熱量"
-        value={rec.target} unit="kcal"
-        hint={`${goal.icon} ${goal.label}模式 · 體重 × ${goal.factor} kcal`}
-        fillPct={100} fillColor="var(--kcal)"
-      />
-      <StatCard
-        kind="cur" ico="🍽️" label="目前份數總熱量"
-        value={Math.round(curK)} unit="kcal"
-        hint="依目前份數自動換算的總熱量"
-        fillPct={ratioPct} fillColor="var(--orange)"
-      />
-      <StatCard
-        kind="bmi" ico="🎯" label="BMI 指數"
-        value={rec.bmi.toFixed(1)} unit={rec.bmiStatus}
-        hint="由身高與體重估算，作為一般體態參考"
-        fillPct={Math.min(100, (rec.bmi / 30) * 100)} fillColor="var(--bmi)"
-      />
-      <StatCard
-        kind="cho" ico="🌾" label="CHO 碳水"
-        value={Math.round(summary.totals.cho)} unit="g"
-        hint="主要能量來源"
-        fillPct={choPct} fillColor="var(--cho)"
-      />
-      <StatCard
-        kind="pro" ico="🍗" label="PRO 蛋白質"
-        value={Math.round(summary.totals.pro)} unit="g"
-        hint="幫助修復與肌肉生長"
-        fillPct={proPct} fillColor="var(--pro)"
-      />
-      <StatCard
-        kind="fat" ico="🥑" label="FAT 脂肪"
-        value={Math.round(summary.totals.fat)} unit="g"
-        hint="提供身體所需脂溶性營養"
-        fillPct={fatPct} fillColor="var(--fat)"
-      />
-      <StatCard
-        kind="delta" ico="🧭" label="熱量差距提示"
-        value={calorieDelta > 0 ? `+${deltaAbs}` : calorieDelta < 0 ? `-${deltaAbs}` : "0"} unit="kcal"
-        hint={deltaHint}
-        fillPct={Math.max(8, 100 - (deltaAbs / targetK) * 100)}
-        fillColor={deltaColor}
-      />
-    </div>
-  );
-}
+  const macros = [
+    { id: "cho", label: "CHO 碳水", grams: summary.totals.cho, cal: summary.macroCal.cho, ratio: summary.ratios.cho, hue: "grain" },
+    { id: "pro", label: "PRO 蛋白", grams: summary.totals.pro, cal: summary.macroCal.pro, ratio: summary.ratios.pro, hue: "protein" },
+    { id: "fat", label: "FAT 脂肪", grams: summary.totals.fat, cal: summary.macroCal.fat, ratio: summary.ratios.fat, hue: "veg" },
+  ];
 
-function FormulaShowcase({ profile, rec, embedded = false }) {
-  const goal = _N.GOAL_OPTIONS.find(g => g.value === profile.goal) || _N.GOAL_OPTIONS[1];
-  const sex = _N.SEX_OPTIONS.find(s => s.value === profile.sex) || _N.SEX_OPTIONS[0];
-  const activity = _N.ACTIVITY_OPTIONS.find(a => a.value === profile.activity) || _N.ACTIVITY_OPTIONS[1];
+  const macroColors = { cho: "var(--hue-grain)", pro: "var(--hue-protein)", fat: "var(--hue-veg)" };
 
-  const choG = Math.round(rec.target * 0.5 / 4);
-  const proG = Math.round(rec.target * 0.25 / 4);
-  const fatG = Math.round(rec.target * 0.25 / 9);
+  function setServing(id, val) {
+    setServings((s) => ({ ...s, [id]: clampServing(id, val) }));
+  }
 
-  const theoryServings = {
-    grains: _N.roundHalf(choG * 0.6 / 15),
-    fruits: _N.roundHalf(choG * 0.2 / 15),
-    vegetables: _N.roundHalf(choG * 0.2 / 5),
-    protein: _N.roundHalf(proG / 7),
-    dairy: rec.recommended.dairy,
-    fats: _N.roundHalf(fatG / 5),
-  };
-
-  const servingCards = [
-    {
-      id: "grains",
-      icon: "🍚",
-      label: "全穀雜糧類",
-      formula: `${choG} × 60% ÷ 15`,
-      theory: theoryServings.grains,
-      current: rec.recommended.grains,
-    },
-    {
-      id: "fruits",
-      icon: "🍎",
-      label: "水果類",
-      formula: `${choG} × 20% ÷ 15`,
-      theory: theoryServings.fruits,
-      current: rec.recommended.fruits,
-    },
-    {
-      id: "vegetables",
-      icon: "🥦",
-      label: "蔬菜類",
-      formula: `${choG} × 20% ÷ 5`,
-      theory: theoryServings.vegetables,
-      current: rec.recommended.vegetables,
-    },
-    {
-      id: "protein",
-      icon: "🥚",
-      label: "豆魚蛋肉類",
-      formula: `${proG} ÷ 7`,
-      theory: theoryServings.protein,
-      current: rec.recommended.protein,
-    },
-    {
-      id: "dairy",
-      icon: "🥛",
-      label: "乳品類",
-      formula: "固定 1～2 份",
-      theory: theoryServings.dairy,
-      current: rec.recommended.dairy,
-    },
-    {
-      id: "fats",
-      icon: "🥜",
-      label: "油脂與堅果種子類",
-      formula: `${fatG} ÷ 5`,
-      theory: theoryServings.fats,
-      current: rec.recommended.fats,
-    },
-  ].map((item) => {
-    const guide = _N.FOOD_GUIDE.find(g => g.id === item.id);
-    return {
-      ...item,
-      portion: guide?.portion || "",
-      tip: guide?.tip || "",
+  function handleExport(id) {
+    if (exporting) return;
+    setExporting(id); setExportProgress(0); setExportMsg(null);
+    const start = performance.now();
+    const total = 1500 + Math.random() * 600;
+    const step = () => {
+      const p = Math.min(1, (performance.now() - start) / total);
+      setExportProgress(p);
+      if (p < 1) requestAnimationFrame(step);
+      else {
+        setExporting(null);
+        setExportMsg(`已下載 飲食計劃-${new Date().toISOString().slice(0, 10)}.${id === "csv" ? "csv" : id === "xls" ? "xls" : id}`);
+      }
     };
-  });
-
-  const summaryCards = [
-    { label: "身高", value: `${profile.heightCm}`, meta: "cm" },
-    { label: "體重", value: `${profile.weightKg}`, meta: "kg" },
-    { label: "目標", value: goal.label, meta: `× ${goal.factor} kcal` },
-    { label: "活動量", value: activity.label.replace(/（.*?）/g, ""), meta: sex.label.replace(/[♂♀]/g, "").trim() },
-    { label: "BMI", value: rec.bmi.toFixed(1), meta: rec.bmiStatus },
-    { label: "建議熱量", value: `${rec.target}`, meta: "kcal / day" },
-  ];
-
-  return (
-    <article className={"card formula-showcase" + (embedded ? " is-embedded" : " is-tinted-cream")}>
-      {!embedded ? (
-        <>
-          <div className="card-eyebrow"><span aria-hidden="true">🧠</span>Step 02.5 · 套進公式</div>
-          <h2 className="card-title">把目前資料套進公式</h2>
-          <p className="card-sub">直接把你現在輸入的身高、體重、活動量與目標帶進公式，先看理論值，再看目前計算器的建議份數。</p>
-        </>
-      ) : null}
-
-      <div className="formula-overview">
-        {summaryCards.map((item) => (
-          <article key={item.label} className="formula-pill">
-            <span className="formula-pill-label">{item.label}</span>
-            <strong className="formula-pill-value">{item.value}</strong>
-            <span className="formula-pill-meta">{item.meta}</span>
-          </article>
-        ))}
-      </div>
-
-      <div className="formula-board">
-        <article className="formula-stage is-current">
-          <span className="formula-stage-kicker">目前資料</span>
-          <h3 className="formula-stage-title">先把現在的輸入整理好</h3>
-          <div className="formula-identity">
-            <span>{profile.heightCm} cm</span>
-            <span>{profile.weightKg} kg</span>
-            <span>{goal.label}</span>
-          </div>
-          <p className="formula-stage-copy">
-            目前會讀取你在飲食計算器填寫的資料，包含 {sex.label.replace(/[♂♀]/g, "").trim()}、{activity.label} 與飲食目標。
-          </p>
-        </article>
-
-        <article className="formula-stage is-energy">
-          <span className="formula-stage-kicker">1. 每日熱量</span>
-          <h3 className="formula-stage-title">先算今天的熱量目標</h3>
-          <div className="formula-equation">
-            <span className="formula-eq-label">每日熱量</span>
-            <strong>{profile.weightKg} × {goal.factor}</strong>
-            <span className="formula-eq-mark">=</span>
-            <b>{rec.target} kcal</b>
-          </div>
-          <p className="formula-stage-copy">依照你目前的 {goal.label} 目標，先用每公斤體重 {goal.factor} kcal 做簡化估算。</p>
-        </article>
-
-        <article className="formula-stage is-macro">
-          <span className="formula-stage-kicker">2. 三大營養素</span>
-          <h3 className="formula-stage-title">把熱量換算成克數</h3>
-          <div className="formula-macro-lines">
-            <div className="formula-macro-line"><span>CHO</span><code>{rec.target} × 50% ÷ 4</code><b>約 {choG} g</b></div>
-            <div className="formula-macro-line"><span>PRO</span><code>{rec.target} × 25% ÷ 4</code><b>約 {proG} g</b></div>
-            <div className="formula-macro-line"><span>FAT</span><code>{rec.target} × 25% ÷ 9</code><b>約 {fatG} g</b></div>
-          </div>
-          <p className="formula-stage-copy">碳水與蛋白質每克約 4 kcal，脂肪每克約 9 kcal，所以需要先把熱量拆成克數。</p>
-        </article>
-
-        <article className="formula-stage is-serving">
-          <div className="formula-stage-head">
-            <div>
-              <span className="formula-stage-kicker">3. 建議份數</span>
-              <h3 className="formula-stage-title">把克數反推成每天該吃幾份</h3>
-            </div>
-            <div className="formula-note-badge">目前建議值已套用活動量、年齡與 BMI 微調</div>
-          </div>
-
-          <div className="formula-serving-grid">
-            {servingCards.map((item) => (
-              <article key={item.id} className="formula-serving-card">
-                <div className="formula-serving-head">
-                  <span className="formula-serving-icon" aria-hidden="true">{item.icon}</span>
-                  <div>
-                    <strong>{item.label}</strong>
-                    <span>{item.portion}</span>
-                  </div>
-                </div>
-                <div className="formula-serving-line">公式：<code>{item.formula}</code></div>
-                <div className="formula-serving-results">
-                  <span className="formula-result-chip">理論值 約 {_N.fmt(item.theory)} 份</span>
-                  <span className="formula-result-chip is-current">目前建議 {_N.fmt(item.current)} 份</span>
-                </div>
-                <p className="formula-serving-tip">{item.tip}</p>
-              </article>
-            ))}
-          </div>
-        </article>
-      </div>
-
-      <div className="formula-flow-ribbon">
-        <span className="flow-step">先估算熱量</span>
-        <span className="flow-arrow">→</span>
-        <span className="flow-step">分配營養素比例</span>
-        <span className="flow-arrow">→</span>
-        <span className="flow-step">換算成克數</span>
-        <span className="flow-arrow">→</span>
-        <span className="flow-step">反推每日建議份數</span>
-      </div>
-    </article>
-  );
-}
-
-function ServingsEditor({ servings, setServings, rec }) {
-  const set = (id, v) => setServings(s => ({ ...s, [id]: _N.clampServing(id, v) }));
-  const isCustom = _N.FOOD_GROUPS.some(g => servings[g.id] !== rec.recommended[g.id]);
-
-  return (
-    <article className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <div className="card-eyebrow"><span aria-hidden="true">🎚️</span>Step 03 · 微調份數</div>
-          <h2 className="card-title">每日飲食份數建議</h2>
-          <p className="card-sub">直接用 + / − 微調每一類食物，營養素與圖表會立即重新計算。</p>
-        </div>
-        <button className="btn"
-          onClick={() => setServings(rec.recommended)}
-          disabled={!isCustom}>
-          <span aria-hidden="true">↻</span>
-          恢復系統建議
-        </button>
-      </div>
-
-      <div className="editor-grid">
-        {_N.FOOD_GROUPS.map(g => {
-          const cur = servings[g.id];
-          const rcm = rec.recommended[g.id];
-          return (
-            <article key={g.id} className="editor-card" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
-              <div className="editor-head">
-                <div className="editor-ico" style={{ background: g.tint, color: g.color }}>{g.icon}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="editor-name">{g.label}</div>
-                  <div className="editor-desc">{g.desc}</div>
-                </div>
-              </div>
-              <div className="editor-controls">
-                <button className="step-btn" onClick={() => set(g.id, cur - 0.5)} aria-label={`減少${g.label}`}>−</button>
-                <input className="serving-input" type="number" min="0" max="20" step="0.5"
-                  value={cur} onChange={e => set(g.id, Number(e.target.value))} />
-                <button className="step-btn" onClick={() => set(g.id, cur + 0.5)} aria-label={`增加${g.label}`}>+</button>
-              </div>
-              <div className="editor-meta">
-                <span>建議 <b>{_N.fmt(rcm)}</b> 份</span>
-                <span>目前 <b style={{ color: cur === rcm ? "var(--ink-soft)" : "var(--green-deep)" }}>{_N.fmt(cur)}</b> 份</span>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-function MacroDonut({ summary }) {
-  const { ratios, totals, total, macroKcal } = summary;
-  const data = [
-    { label: "CHO 碳水",   key: "cho", color: "var(--cho)",  deep: "var(--cho-deep)",  soft: "var(--cho-soft)", g: totals.cho, kcal: macroKcal.cho, ratio: ratios.cho, ico: "🍚", role: "飯、麵與主食能量" },
-    { label: "PRO 蛋白質", key: "pro", color: "var(--pro)",  deep: "var(--pro-deep)",  soft: "var(--pro-soft)", g: totals.pro, kcal: macroKcal.pro, ratio: ratios.pro, ico: "🍗", role: "肉、魚、蛋幫助修復" },
-    { label: "FAT 脂肪",   key: "fat", color: "var(--fat)",  deep: "var(--fat-deep)",  soft: "var(--fat-soft)", g: totals.fat, kcal: macroKcal.fat, ratio: ratios.fat, ico: "🥑", role: "油脂幫助吸收與飽足" },
-  ];
-  const sorted = [...data].sort((a, b) => b.ratio - a.ratio);
-  const [mainMacro, secondMacro, thirdMacro] = sorted;
-  const compactMacros = [secondMacro, thirdMacro].filter(Boolean);
-  const companionLabels = compactMacros.map((d) => d.label).join("、");
-
-  return (
-    <article className="card macro-card">
-      <div className="card-eyebrow"><span aria-hidden="true">🍱</span>Step 04 · 營養素分布</div>
-      <h2 className="card-title">三大營養素比例</h2>
-      <p className="card-sub">用像便當盤一樣的方式看看今天的營養比例，最常出現的營養素會放在最大格。</p>
-
-      <div className="plate-wrap">
-        <div className="mealboard" role="img" aria-label="今日餐盤三大營養素比例">
-          <div className="mealboard-note">{Math.round(total)} kcal · 今日餐盤</div>
-          <div className="mealboard-rim" />
-          <div className="mealboard-body">
-            <div className="mealboard-grid">
-              <section
-                className={`meal-slot meal-slot-main is-${mainMacro.key}`}
-                style={{ "--slot-color": mainMacro.color, "--slot-deep": mainMacro.deep, "--slot-soft": mainMacro.soft }}
-              >
-                <div className="meal-slot-top">
-                  <div className="meal-chip">
-                    <span className="meal-chip-ico" aria-hidden="true">{mainMacro.ico}</span>
-                    <span>{mainMacro.label}</span>
-                  </div>
-                  <span className="meal-slot-flag">主力來源</span>
-                </div>
-                <div className="meal-slot-center">
-                  <div className="meal-slot-percent">{mainMacro.ratio.toFixed(1)}%</div>
-                  <div className="meal-slot-copy">{mainMacro.role}</div>
-                </div>
-                <div className="meal-slot-meta">
-                  <span>{Math.round(mainMacro.g)} g</span>
-                  <span>{Math.round(mainMacro.kcal)} kcal</span>
-                </div>
-              </section>
-
-              <div className="meal-slot-stack">
-                {compactMacros.map((d) => (
-                  <section
-                    key={d.key}
-                    className={`meal-slot meal-slot-small is-${d.key}`}
-                    style={{ "--slot-color": d.color, "--slot-deep": d.deep, "--slot-soft": d.soft }}
-                  >
-                    <div className="meal-slot-top">
-                      <div className="meal-chip">
-                        <span className="meal-chip-ico" aria-hidden="true">{d.ico}</span>
-                        <span>{d.label}</span>
-                      </div>
-                      <span className="meal-slot-flag is-soft">搭配</span>
-                    </div>
-                    <div className="meal-slot-center">
-                      <div className="meal-slot-percent">{d.ratio.toFixed(1)}%</div>
-                    </div>
-                    <div className="meal-slot-meta">
-                      <span>{Math.round(d.g)} g</span>
-                      <span>{Math.round(d.kcal)} kcal</span>
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </div>
-
-            <div className="mealboard-caption">
-              <span className="mealboard-caption-pill">
-                <span className="mealboard-caption-badge" aria-hidden="true">★</span>
-                <b>今天最多</b>
-                <span>{mainMacro.label}</span>
-              </span>
-              <span className="mealboard-caption-note">像日常便當盤一樣，最大格代表今天最主要的能量來源。</span>
-            </div>
-          </div>
-
-          <div className="mealboard-garnish" aria-hidden="true">
-            <span className="garnish-dot is-red" />
-            <span className="garnish-dot is-green" />
-            <span className="garnish-leaf" />
-          </div>
-
-          <div className="mealboard-chopsticks" aria-hidden="true">
-            <span />
-            <span />
-          </div>
-        </div>
-
-        <div className="macro-list">
-          <div className="macro-summary">
-            <div className="macro-summary-head">
-              <span className="macro-summary-badge">今日分布摘要</span>
-              <b>{Math.round(total)} kcal</b>
-            </div>
-            <p className="macro-summary-copy">
-              今天以 <strong>{mainMacro.label}</strong> 為主，另外搭配 {companionLabels}，整體看起來更像日常一餐的營養分布。
-            </p>
-            <div className="macro-summary-legend">
-              {data.map((d) => (
-                <span
-                  key={d.key}
-                  className="macro-summary-pill"
-                  style={{ "--mp": d.color, "--mp-deep": d.deep, "--mp-soft": d.soft }}
-                >
-                  <span className="macro-summary-pill-ico" aria-hidden="true">{d.ico}</span>
-                  <b>{d.label}</b>
-                  <span>{d.ratio.toFixed(1)}%</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {data.map((d, i) => (
-            <article
-              key={d.key}
-              className={"macro-story" + (d.key === mainMacro.key ? " is-highlight" : "")}
-              style={{
-                "--mc": d.color,
-                "--mc-deep": d.deep,
-                "--mc-soft": d.soft,
-                animationDelay: `${i * 100}ms`,
-              }}
-            >
-              <div className="macro-story-head">
-                <span className="macro-story-chip">
-                  <span className="macro-story-ico">{d.ico}</span>
-                  <b>{d.label}</b>
-                </span>
-                <span className="macro-story-tag">{d.key === mainMacro.key ? "今日主角" : "一起搭配"}</span>
-              </div>
-
-              <div className="macro-story-body">
-                <span className="macro-story-pct">{d.ratio.toFixed(1)}%</span>
-                <div className="macro-story-stat">
-                  <div className="macro-story-kcal">
-                    <strong>{Math.round(d.kcal)}</strong>
-                    <span>kcal</span>
-                  </div>
-                  <div className="macro-story-grams">
-                    <strong>{Math.round(d.g)}</strong>
-                    <span>g</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="macro-story-bar">
-                <div className="macro-story-bar-fill" style={{ width: `${d.ratio}%` }} />
-              </div>
-
-              <div className="macro-story-foot">
-                <span>{d.role}</span>
-                <span className="macro-story-note">{d.key === mainMacro.key ? "今天比例最高" : "一起搭配更均衡"}</span>
-              </div>
-            </article>
-          ))}
-          <div className="macro-total">
-            <span className="muted">合計</span>
-            <b>{Math.round(total)} kcal</b>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function ServingGuideBoard({
-  targetServings,
-  currentServings = null,
-  title = "各類食物份數",
-  subtitle = "",
-  showProgress = false,
-}) {
-  const totalTarget = _N.FOOD_GROUPS.reduce((acc, g) => acc + (targetServings?.[g.id] || 0), 0);
-  const totalCurrent = currentServings
-    ? _N.FOOD_GROUPS.reduce((acc, g) => acc + (currentServings?.[g.id] || 0), 0)
-    : null;
-
-  function buildStickerStates(target, current) {
-    const slotCount = Math.max(1, Math.ceil(target));
-    const capped = Math.min(showProgress ? current : target, target);
-    const fullCount = Math.floor(Math.max(0, capped));
-    const hasHalf = capped - fullCount >= 0.5 && fullCount < slotCount;
-
-    return Array.from({ length: slotCount }, (_, index) => {
-      if (index < fullCount) return "full";
-      if (hasHalf && index === fullCount) return "half";
-      return showProgress ? "empty" : "ghost";
-    });
+    requestAnimationFrame(step);
   }
 
   return (
-    <article className={"card serving-guide-board" + (showProgress ? " is-progress" : " is-target-only")}>
-      <div className="card-eyebrow"><span aria-hidden="true">📊</span>{showProgress ? "今日份數進度" : "每日份數建議"}</div>
-      <h2 className="card-title">{title}</h2>
-      <p className="card-sub">
-        {subtitle || (showProgress
-          ? "依照今天已記錄的食物，自動累計六大類份數進度。"
-          : "這裡先看系統建議的每日份量，不顯示目前調整進度。")}
-      </p>
+    <>
+      <PageHead
+        eyebrow="DAILY NUTRITION CALCULATOR"
+        title='每日<em>飲食份數</em>與營養素'
+        sub="輸入身高、體重、年齡與目標，系統會即時估算每日建議熱量、六大類食物份數與三大營養素。所有調整即時更新。"
+      />
 
-      <div className="serving-guide-summary">
-        <div className="serving-guide-total">
-          <span className="serving-guide-total-label">{showProgress ? "建議總份數" : "今日建議總份數"}</span>
-          <strong>{_N.fmt(totalTarget)}</strong>
-          <span>份</span>
-        </div>
+      <section className="container workspace">
+        {/* ── Sidebar ───────────────────────────────────── */}
+        <aside className="sidebar">
+          <article className="card rise" style={{ "--motion-delay": "60ms" }}>
+            <div className="card-head">
+              <div>
+                <span className="eyebrow">輸入區</span>
+                <h2>個人資料</h2>
+              </div>
+            </div>
 
-        {showProgress ? (
-          <div className="serving-guide-total is-current">
-            <span className="serving-guide-total-label">目前進度</span>
-            <strong>{_N.fmt(totalCurrent || 0)}</strong>
-            <span>/ {_N.fmt(totalTarget)} 份</span>
-          </div>
-        ) : (
-          <div className="serving-guide-note">下面每一列直接顯示建議份量，方便你看今天大概要吃到多少。</div>
-        )}
-      </div>
-
-      <div className="serving-guide-list">
-        {_N.FOOD_GROUPS.map((g, i) => {
-          const target = targetServings?.[g.id] || 0;
-          const current = currentServings?.[g.id] || 0;
-          const states = buildStickerStates(target, current);
-          const diff = +(current - target).toFixed(1);
-          const status = Math.abs(diff) < 0.3 ? "ok" : diff > 0 ? "over" : "under";
-
-          return (
-            <article
-              key={g.id}
-              className="serving-guide-row"
-              style={{ "--sg": g.accent, "--sg-soft": g.tint, animationDelay: `${i * 60}ms` }}
-            >
-              <div className="serving-guide-row-head">
-                <div className="serving-guide-label">
-                  <span className="serving-guide-ico">{g.icon}</span>
-                  <div>
-                    <span className="serving-guide-name">{g.label}</span>
-                    <span className="serving-guide-desc">{g.desc}</span>
-                  </div>
-                </div>
-
-                <div className="serving-guide-values">
-                  {showProgress ? (
-                    <>
-                      <strong>{_N.fmt(current)}</strong>
-                      <span>/ {_N.fmt(target)} 份</span>
-                    </>
-                  ) : (
-                    <>
-                      <strong>{_N.fmt(target)}</strong>
-                      <span>份</span>
-                    </>
-                  )}
+            <div className="form-grid">
+              <NumField label="身高" unit="cm" value={profile.heightCm} min={100} max={230} step={1}
+                onChange={(v) => setProfile((p) => ({ ...p, heightCm: v }))}/>
+              <NumField label="體重" unit="kg" value={profile.weightKg} min={30} max={200} step={0.5}
+                onChange={(v) => setProfile((p) => ({ ...p, weightKg: v }))}/>
+              <NumField label="年齡" unit="years" value={profile.age} min={10} max={100} step={1}
+                onChange={(v) => setProfile((p) => ({ ...p, age: v }))}/>
+              <div className="field">
+                <div className="field-label">性別</div>
+                <div className="seg">
+                  {SEX_OPTIONS.map((o) => (
+                    <button key={o.value} aria-pressed={profile.sex === o.value}
+                      onClick={() => setProfile((p) => ({ ...p, sex: o.value }))}>{o.label}</button>
+                  ))}
                 </div>
               </div>
+              <div className="field field-full">
+                <div className="field-label">活動量</div>
+                <div className="seg">
+                  {ACTIVITY_OPTIONS.map((o) => (
+                    <button key={o.value} aria-pressed={profile.activity === o.value}
+                      onClick={() => setProfile((p) => ({ ...p, activity: o.value }))}>{o.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="field field-full">
+                <div className="field-label">飲食目標</div>
+                <div className="goal-pills">
+                  {GOAL_OPTIONS.map((g) => (
+                    <button key={g.value} className="goal-pill" aria-pressed={profile.goal === g.value}
+                      onClick={() => setProfile((p) => ({ ...p, goal: g.value }))}>
+                      <strong>{g.label}</strong>
+                      <span>{g.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </article>
 
-              <div className="serving-guide-stickers" aria-label={`${g.label}份數圖示`}>
-                {states.map((state, index) => (
-                  <span
-                    key={`${g.id}-${index}`}
-                    className={`serving-guide-sticker is-${state}`}
-                    title={`${g.label} ${index + 1}`}
-                  >
-                    {g.icon}
-                  </span>
+        </aside>
+
+        {/* ── Main column ───────────────────────────────── */}
+        <div className="main-col">
+          {/* Stats */}
+          <div className="stats">
+            <StatCard label="每日建議熱量" value={recommendation.targetCalories} unit="kcal"
+              hint={`${goalLabel}模式 · ${profile.weightKg} kg × ${GOAL_OPTIONS.find((g) => g.value === profile.goal).calorieFactor}`}
+              corner="01" delay={80}/>
+            <StatCard label="目前份數熱量" value={Math.round(summary.totalCal)} unit="kcal"
+              hint={Math.abs(calorieDelta) < 30
+                ? "與建議值接近"
+                : (calorieDelta > 0 ? `高於建議 ${Math.round(calorieDelta)} kcal` : `低於建議 ${Math.round(Math.abs(calorieDelta))} kcal`)}
+              corner="02" delay={140}/>
+            <StatCard label="BMI" value={recommendation.bmi.toFixed(1)} unit={recommendation.bmiStatus}
+              hint="由身高、體重估算" corner="03" delay={200}/>
+            <StatCard label="份數分配基準" value={activityLabel} unit={`${profile.age} 歲`}
+              hint="活動量、年齡會微調分配" corner="04" delay={260}/>
+          </div>
+
+          {/* Servings editor */}
+          <article className="card rise" style={{ "--motion-delay": "180ms" }}>
+            <div className="card-head">
+              <div>
+                <span className="eyebrow">結果區　·　Servings Editor</span>
+                <h2>每日六大類食物份數</h2>
+              </div>
+              <button className="btn ghost" onClick={() => setServings(recommendation.recommendedServings)} disabled={!isCustom}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5a4.5 4.5 0 11-1.32-3.18M11 1v3h-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                恢復系統建議
+              </button>
+            </div>
+            <p className="note" style={{ marginTop: -6, marginBottom: 16 }}>
+              拖曳滑桿、按 +/-，或直接輸入數字。系統會即時更新熱量與三大營養素比例。
+            </p>
+
+            <div className="editor-grid">
+              {FOOD_GROUPS.map((g, i) => {
+                const cur = servings[g.id];
+                const tgt = recommendation.recommendedServings[g.id];
+                const lim = SERVING_LIMITS[g.id];
+                const isCustom = cur !== tgt;
+                return (
+                  <div key={g.id} className={"serving-card rise " + (isCustom ? "customized" : "")}
+                    style={{ "--motion-delay": `${200 + i * 50}ms`, ...hueVars(g.hue) }}>
+                    <div className="serving-head">
+                      <div>
+                        <h3>{g.label}</h3>
+                        <p>{g.description}</p>
+                      </div>
+                      <div className="badge" style={hueVars(g.hue)}>{g.short}</div>
+                    </div>
+                    <div className="serving-slider">
+                      <div className="track">
+                        <div className="fill" style={{ width: `${(cur / lim.max) * 100}%`, "--hue": `var(--hue-${g.hue})` }}/>
+                      </div>
+                      <div className="target-marker" style={{ left: `${(tgt / lim.max) * 100}%`, "--hue": `var(--hue-${g.hue})` }}/>
+                      <input type="range" min={0} max={lim.max} step={0.5} value={cur}
+                        style={{ "--hue": `var(--hue-${g.hue})` }}
+                        onChange={(e) => setServing(g.id, Number(e.target.value))}/>
+                    </div>
+                    <div className="serving-controls">
+                      <button className="stepper" onClick={() => setServing(g.id, cur - 0.5)}>−</button>
+                      <div className="serving-value">
+                        <Counter value={cur} decimals={cur % 1 === 0 ? 0 : 1}/><small>份</small>
+                      </div>
+                      <button className="stepper" onClick={() => setServing(g.id, cur + 0.5)}>＋</button>
+                    </div>
+                    <div className="serving-meta">
+                      <span>建議 {fmt(tgt)} 份</span>
+                      {isCustom ? <span className="delta">{cur > tgt ? "+" : ""}{fmt(cur - tgt)}</span> : <span>已套用建議</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+
+          {/* Macro mini cards */}
+          <div className="macro-grid">
+            {macros.map((m, i) => (
+              <article key={m.id} className="macro-card rise" style={{ "--motion-delay": `${260 + i * 60}ms`, ...hueVars(m.hue) }}>
+                <div className="stripe"/>
+                <span className="label">{m.label}</span>
+                <strong className="grams"><Counter value={m.grams} decimals={0}/> g</strong>
+                <span className="meta"><Counter value={m.cal} decimals={0}/> kcal · <Counter value={m.ratio} decimals={1}/>%</span>
+              </article>
+            ))}
+          </div>
+
+          {/* Charts */}
+          <article className="card rise" style={{ "--motion-delay": "320ms" }}>
+            <div className="card-head">
+              <div>
+                <span className="eyebrow">圖表　·　Charts</span>
+                <h2>三大營養素 與 各類份數</h2>
+              </div>
+            </div>
+            <div className="donut-wrap" style={{ marginBottom: 28 }}>
+              <Donut
+                segments={macros.map((m) => ({ value: m.cal, color: macroColors[m.id] }))}
+                centerValue={Math.round(summary.totalCal)}
+                centerLabel="kcal"
+              />
+              <div className="legend">
+                {macros.map((m) => (
+                  <div key={m.id} className="legend-row">
+                    <span className="swatch" style={{ background: macroColors[m.id] }}/>
+                    <span className="name">{m.label}<small>{Math.round(m.cal)} kcal · {Math.round(m.grams)} g</small></span>
+                    <span className="pct">{m.ratio.toFixed(1)}%</span>
+                  </div>
                 ))}
               </div>
+            </div>
+            <div style={{ borderTop: "1px solid var(--line-soft)", paddingTop: 22 }}>
+              <BarList
+                rows={FOOD_GROUPS.map((g) => ({
+                  id: g.id, label: g.label,
+                  value: servings[g.id], target: recommendation.recommendedServings[g.id],
+                  color: `var(--hue-${g.hue})`,
+                }))}
+              />
+            </div>
+          </article>
 
-              <div className="serving-guide-foot">
-                <span>建議 {_N.fmt(target)} 份</span>
-                {showProgress ? (
-                  <>
-                    <span>目前 {_N.fmt(current)} 份</span>
-                    <span className={`serving-guide-status is-${status}`}>
-                      {status === "ok" ? "✓ 已達標" : status === "over" ? `多 ${_N.fmt(Math.abs(diff))} 份` : `少 ${_N.fmt(Math.abs(diff))} 份`}
-                    </span>
-                  </>
-                ) : (
-                  <span className="serving-guide-status is-plain">依建議份量排列圖示</span>
-                )}
+          {/* Export */}
+          <article className="card rise" style={{ "--motion-delay": "380ms" }}>
+            <div className="card-head">
+              <div>
+                <span className="eyebrow">匯出　·　Export</span>
+                <h2>下載報表與試算表</h2>
               </div>
-            </article>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
+            </div>
+            <p className="note" style={{ marginTop: -6, marginBottom: 16 }}>
+              PDF / JPG 為視覺報表；CSV 可直接匯入 Google 試算表；XLS 可在 Excel 開啟。
+            </p>
+            <div className="export-bar">
+              {EXPORT_ACTIONS.map((a) => {
+                const isMe = exporting === a.id;
+                return (
+                  <button key={a.id} className="export-btn" disabled={!!exporting} onClick={() => handleExport(a.id)}>
+                    {isMe ? <span className="spinner"/> : <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-mute)" }}>{a.icon}</span>}
+                    {isMe ? "匯出中…" : a.label}
+                    {isMe && <span className="progress" style={{ width: `${exportProgress * 100}%` }}/>}
+                  </button>
+                );
+              })}
+            </div>
+            {exportMsg && <p className="export-status">{exportMsg}</p>}
+          </article>
 
-function ServingBars({ servings, rec }) {
-  return (
-    <ServingGuideBoard
-      targetServings={rec.recommended}
-      title="六大類食物份數建議"
-      subtitle="先看今天建議吃到的份量，再決定三餐和點心要怎麼分配。"
-      showProgress={false}
-    />
-  );
-}
+          {/* Detail table */}
+          <article className="card rise" style={{ "--motion-delay": "420ms" }}>
+            <div className="card-head">
+              <div>
+                <span className="eyebrow">明細　·　Breakdown</span>
+                <h2>每類食物計算明細</h2>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>食物類別</th>
+                    <th>份數</th>
+                    <th>每份 CHO</th>
+                    <th>每份 PRO</th>
+                    <th>每份 FAT</th>
+                    <th>CHO 計算</th>
+                    <th>PRO 計算</th>
+                    <th>FAT 計算</th>
+                    <th>小計熱量</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.rows.map((r) => (
+                    <tr key={r.id}>
+                      <td>
+                        <div className="row-title">
+                          <div className="badge" style={{ width: 26, height: 26, fontSize: 12, ...hueVars(r.hue) }}>{r.short}</div>
+                          <div>
+                            <strong style={{ display: "block" }}>{r.label}</strong>
+                            <span style={{ fontSize: 11.5, color: "var(--ink-mute)" }}>{r.description}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="num">{fmt(r.servings)}</td>
+                      <td className="num">{r.cho} g</td>
+                      <td className="num">{r.pro} g</td>
+                      <td className="num">{r.fat} g</td>
+                      <td className="num">{fmt(r.servings)} × {r.cho} = {fmt(r.choTotal)}</td>
+                      <td className="num">{fmt(r.servings)} × {r.pro} = {fmt(r.proTotal)}</td>
+                      <td className="num">{fmt(r.servings)} × {r.fat} = {fmt(r.fatTotal)}</td>
+                      <td className="num">{Math.round(r.subtotalCalories)} kcal</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>總計</td>
+                    <td className="num">{fmt(FOOD_GROUPS.reduce((a, g) => a + servings[g.id], 0))}</td>
+                    <td/><td/><td/>
+                    <td className="num">{Math.round(summary.totals.cho)} g</td>
+                    <td className="num">{Math.round(summary.totals.pro)} g</td>
+                    <td className="num">{Math.round(summary.totals.fat)} g</td>
+                    <td className="num">{Math.round(summary.totalCal)} kcal</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </article>
 
-function DetailsTable({ summary }) {
-  const { fmt } = _N;
-  const totalSrv = summary.rows.reduce((a, r) => a + r.servings, 0);
-  return (
-    <article className="card">
-      <div className="card-eyebrow"><span aria-hidden="true">📋</span>明細表</div>
-      <h2 className="card-title">每類食物計算明細</h2>
-      <p className="table-intro">下方表格會依照目前份數，自動計算各類食物提供的營養素。</p>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>類別</th><th>份數</th>
-              <th>每份 CHO</th><th>每份 PRO</th><th>每份 FAT</th>
-              <th>CHO (g)</th><th>PRO (g)</th><th>FAT (g)</th>
-              <th>小計</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary.rows.map(r => (
-              <tr key={r.id}>
-                <td><span className="cell-name"><span className="ico">{r.icon}</span>{r.label}</span></td>
-                <td>{fmt(r.servings)} 份</td>
-                <td>{r.perServing.cho}</td>
-                <td>{r.perServing.pro}</td>
-                <td>{r.perServing.fat}</td>
-                <td>{fmt(r.choTotal)}</td>
-                <td>{fmt(r.proTotal)}</td>
-                <td>{fmt(r.fatTotal)}</td>
-                <td>{Math.round(r.kcal)} kcal</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>總計</td><td>{fmt(totalSrv)} 份</td>
-              <td colSpan="3">—</td>
-              <td>{Math.round(summary.totals.cho)}</td>
-              <td>{Math.round(summary.totals.pro)}</td>
-              <td>{Math.round(summary.totals.fat)}</td>
-              <td>{Math.round(summary.total)} kcal</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </article>
-  );
-}
-
-function CalculatorPage({ profile, setProfile, servings, setServings }) {
-  const rec = useMemo(() => _N.buildRecommended(profile), [profile]);
-  const summary = useMemo(() => _N.nutritionFromServings(servings), [servings]);
-  const delta = summary.total - rec.target;
-
-  return (
-    <>
-      <Hero />
-      <section className="shell workspace">
-        <ProfileForm profile={profile} setProfile={setProfile} />
-        <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
-          <div className="dashboard-section">
-            <SectionTitle
-              eyebrow="Step 02 · 查看每日建議"
-              title="先看今天的飲食 Dashboard"
-              sub="把每日建議熱量、目前份數總熱量、BMI、三大營養素與熱量差距整理成一眼就懂的卡片。"
-            />
-            <Dashboard rec={rec} summary={summary} profile={profile} calorieDelta={delta} />
-          </div>
-          <ServingsEditor servings={servings} setServings={setServings} rec={rec} />
-          <div className="chart-grid">
-            <MacroDonut summary={summary} />
-            <ServingBars servings={servings} rec={rec} />
-          </div>
-          <DetailsTable summary={summary} />
-          <div className="disclaimer">
-            <span aria-hidden="true">ℹ️</span>
-            <span>此結果為估算值，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。</span>
-          </div>
+          <p className="disclaimer">此結果為估算值，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。</p>
         </div>
       </section>
     </>
   );
 }
 
+function StatCard({ label, value, unit, hint, corner, delay }) {
+  const isNumeric = typeof value === "number";
+  return (
+    <article className="stat rise" style={{ "--motion-delay": `${delay}ms` }}>
+      <span className="label">{label}</span>
+      <strong className="value">
+        <span key={String(value)} className="value-flip">
+          {isNumeric ? <Counter value={value}/> : value}
+        </span>
+        <small>{unit}</small>
+      </strong>
+      <p className="hint">{hint}</p>
+      <span className="corner-mark">{corner}</span>
+    </article>
+  );
+}
+
+function NumField({ label, unit, value, min, max, step, onChange }) {
+  return (
+    <div className="field">
+      <div className="field-label">{label} <span className="unit">{unit}</span></div>
+      <div className="numeric">
+        <button className="step" onClick={() => onChange(Math.max(min, Math.round((value - step) / step) * step))}>−</button>
+        <input type="number" value={value} min={min} max={max} step={step}
+          onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v))); }}/>
+        <button className="step" onClick={() => onChange(Math.min(max, Math.round((value + step) / step) * step))}>＋</button>
+      </div>
+    </div>
+  );
+}
+
 window.CalculatorPage = CalculatorPage;
-window.FormulaShowcase = FormulaShowcase;
-window.ServingGuideBoard = ServingGuideBoard;

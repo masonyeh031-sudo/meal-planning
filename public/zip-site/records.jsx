@@ -1,950 +1,215 @@
-// ===== 7-day Records page =====
-const RECORDING_UNIT = 0.5;
+// 7-day diet records page — log meals across a week, track totals vs target.
 
-const MEALS = [
-  { id: "breakfast", label: "早餐", icon: "🌅", tint: "var(--cream-soft)" },
-  { id: "lunch",     label: "午餐", icon: "☀️", tint: "var(--orange-soft)" },
-  { id: "dinner",    label: "晚餐", icon: "🌙", tint: "var(--blue-soft)" },
-  { id: "snack",     label: "點心", icon: "🍪", tint: "var(--green-soft)" },
-  { id: "midnight",  label: "宵夜", icon: "🌃", tint: "var(--lilac-soft)" },
-];
+const { DAYS, MEALS, FOOD_GROUPS: FG3, todayDate, GOAL_OPTIONS: GO3, recommendedCalories: rc3 } = window;
 
-const DAY_LABELS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"];
-const EXPORT_ACTIONS = [
-  { format: "photo", label: "照片卡", icon: "📸" },
-  { format: "png", label: "圖片 PNG", icon: "🖼️" },
-  { format: "pdf", label: "PDF", icon: "📄" },
-  { format: "jpg", label: "JPG", icon: "🧾" },
-];
-const PDF_A4_WIDTH = 595.28;
-const PDF_A4_HEIGHT = 841.89;
+const CAT_OPTIONS = FG3.map((g) => ({ id: g.id, label: g.label, short: g.short, hue: g.hue }));
 
-function emptyDay() {
-  return { breakfast: [], lunch: [], dinner: [], snack: [], midnight: [] };
-}
-function emptyWeek() {
-  return DAY_LABELS.map(() => emptyDay());
-}
+// Per-category rough calorie/serving for auto-calorie when amount = servings.
+const CAT_CAL_PER_SERVING = { grains: 70, protein: 75, dairy: 150, vegetables: 25, fruits: 60, fats: 45 };
 
-function loadRecords() {
-  try {
-    const raw = localStorage.getItem("meal-records-v1");
-    if (!raw) return emptyWeek();
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length !== 7) return emptyWeek();
-    return parsed;
-  } catch { return emptyWeek(); }
-}
-function saveRecords(w) {
-  try { localStorage.setItem("meal-records-v1", JSON.stringify(w)); } catch {}
-}
-
-function groupServingKcal(groupId, servings = RECORDING_UNIT) {
-  const group = window.NUTRITION.FOOD_GROUPS.find((item) => item.id === groupId);
-  if (!group) return 0;
-  return Math.round((group.cho * 4 + group.pro * 4 + group.fat * 9) * servings);
-}
-
-const QUICK_GROUP_RECORDS = window.NUTRITION.FOOD_GROUPS.map((group) => ({
-  name: group.label,
-  icon: group.icon,
-  amt: `${RECORDING_UNIT} 份`,
-  kcal: groupServingKcal(group.id),
-  groupId: group.id,
-  servings: RECORDING_UNIT,
-  desc: group.desc,
-}));
-
-const QUICK_FOOD_META = Object.fromEntries(
-  QUICK_GROUP_RECORDS.map((food) => [food.name, { groupId: food.groupId, servings: food.servings, icon: food.icon }])
-);
-
-function normalizeRecordFood(food) {
-  const meta = QUICK_FOOD_META[food.name] || {};
-  return {
-    ...food,
-    groupId: food.groupId || meta.groupId || null,
-    servings: Number.isFinite(food.servings) ? food.servings : (Number.isFinite(meta.servings) ? meta.servings : 0),
-    icon: food.icon || meta.icon || "🍽️",
-  };
-}
-
-function sumDayServings(day) {
-  const totals = Object.fromEntries(window.NUTRITION.FOOD_GROUPS.map((g) => [g.id, 0]));
-  MEALS.forEach((meal) => {
-    (day[meal.id] || []).forEach((food) => {
-      const normalized = normalizeRecordFood(food);
-      if (normalized.groupId && normalized.groupId in totals) {
-        totals[normalized.groupId] += normalized.servings || 0;
-      }
+const SAMPLE_WEEK = (() => {
+  const week = [];
+  for (let i = 0; i < 7; i++) {
+    week.push({
+      date: todayDate(i - 3),
+      meals: { breakfast: [], lunch: [], dinner: [], snack: [] },
     });
-  });
-  return totals;
-}
-
-function buildServingChartData(currentServings, targetServings) {
-  return window.NUTRITION.FOOD_GROUPS.map((group) => {
-    const current = +(currentServings?.[group.id] || 0).toFixed(1);
-    const target = +(targetServings?.[group.id] || 0).toFixed(1);
-    const delta = +(current - target).toFixed(1);
-    return {
-      ...group,
-      current,
-      target,
-      delta,
-      completion: target > 0 ? current / target : 0,
-    };
-  });
-}
-
-function shortFoodGroupLabel(label) {
-  return label.replace("油脂與堅果種子類", "油脂堅果").replace("全穀雜糧類", "全穀").replace("豆魚蛋肉類", "豆魚蛋肉");
-}
-
-function formatPercent(value) {
-  return `${Math.round(value)}%`;
-}
-
-function createFileStamp(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}${month}${day}-${hours}${minutes}`;
-}
-
-function resolveCssColor(value, fallback = "#9ed5a4") {
-  if (!value) return fallback;
-  const trimmed = String(value).trim();
-  const match = /^var\((--[^)]+)\)$/.exec(trimmed);
-  if (!match) return trimmed;
-  const resolved = getComputedStyle(document.documentElement).getPropertyValue(match[1]).trim();
-  return resolved || fallback;
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function canvasToBlob(canvas, type, quality) {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("匯出失敗，無法建立檔案。"));
-        return;
-      }
-      resolve(blob);
-    }, type, quality);
-  });
-}
-
-function dataUrlToBytes(dataUrl) {
-  const encoded = dataUrl.split(",")[1] ?? "";
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
   }
-
-  return bytes;
-}
-
-function createPdfBlob(images) {
-  const encoder = new TextEncoder();
-  const objects = [];
-  const pageIds = [];
-  let nextId = 3;
-
-  images.forEach((image) => {
-    const pageId = nextId;
-    const imageId = nextId + 1;
-    const contentId = nextId + 2;
-    nextId += 3;
-    pageIds.push(pageId);
-
-    const drawWidth = PDF_A4_WIDTH;
-    const drawHeight = drawWidth * (image.height / image.width);
-    const offsetY = Math.max(0, (PDF_A4_HEIGHT - drawHeight) / 2);
-    const contentStream = `q
-${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} 0 ${offsetY.toFixed(2)} cm
-/Im0 Do
-Q`;
-    const contentBytes = encoder.encode(contentStream);
-
-    objects.push({
-      id: pageId,
-      chunks: [
-        encoder.encode(
-          `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_A4_WIDTH.toFixed(2)} ${PDF_A4_HEIGHT.toFixed(2)}] /Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`,
-        ),
-      ],
-    });
-    objects.push({
-      id: imageId,
-      chunks: [
-        encoder.encode(
-          `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>
-stream
-`,
-        ),
-        image.bytes,
-        encoder.encode(`
-endstream`),
-      ],
-    });
-    objects.push({
-      id: contentId,
-      chunks: [
-        encoder.encode(`<< /Length ${contentBytes.length} >>
-stream
-`),
-        contentBytes,
-        encoder.encode(`
-endstream`),
-      ],
-    });
-  });
-
-  objects.unshift({
-    id: 2,
-    chunks: [encoder.encode(`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`)],
-  });
-  objects.unshift({
-    id: 1,
-    chunks: [encoder.encode("<< /Type /Catalog /Pages 2 0 R >>")],
-  });
-
-  const sortedObjects = [...objects].sort((left, right) => left.id - right.id);
-  const maxId = sortedObjects.at(-1)?.id ?? 0;
-  const offsets = new Array(maxId + 1).fill(0);
-  const parts = [encoder.encode("%PDF-1.4\n")];
-  let offset = parts[0].length;
-
-  sortedObjects.forEach((object) => {
-    offsets[object.id] = offset;
-    const objectHeader = encoder.encode(`${object.id} 0 obj\n`);
-    const objectFooter = encoder.encode("\nendobj\n");
-    parts.push(objectHeader);
-    offset += objectHeader.length;
-
-    object.chunks.forEach((chunk) => {
-      parts.push(chunk);
-      offset += chunk.length;
-    });
-
-    parts.push(objectFooter);
-    offset += objectFooter.length;
-  });
-
-  const xrefOffset = offset;
-  let xref = `xref
-0 ${maxId + 1}
-0000000000 65535 f
-`;
-
-  for (let id = 1; id <= maxId; id += 1) {
-    xref += `${String(offsets[id]).padStart(10, "0")} 00000 n
-`;
-  }
-
-  const trailer = `trailer
-<< /Size ${maxId + 1} /Root 1 0 R >>
-startxref
-${xrefOffset}
-%%EOF`;
-
-  parts.push(encoder.encode(xref));
-  parts.push(encoder.encode(trailer));
-
-  return new Blob(parts, { type: "application/pdf" });
-}
-
-function wrapCanvasText(context, text, maxWidth) {
-  const letters = String(text || "").split("");
-  const lines = [];
-  let currentLine = "";
-
-  for (const letter of letters) {
-    const candidate = currentLine + letter;
-    if (context.measureText(candidate).width <= maxWidth || currentLine.length === 0) {
-      currentLine = candidate;
-      continue;
-    }
-    lines.push(currentLine);
-    currentLine = letter;
-  }
-
-  if (currentLine) lines.push(currentLine);
-  return lines;
-}
-
-function drawRoundedRect(context, x, y, width, height, radius, fillStyle, strokeStyle) {
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
-  context.lineTo(x, y + radius);
-  context.quadraticCurveTo(x, y, x + radius, y);
-  context.closePath();
-  context.fillStyle = fillStyle;
-  context.fill();
-  if (strokeStyle) {
-    context.strokeStyle = strokeStyle;
-    context.lineWidth = 1;
-    context.stroke();
-  }
-}
-
-function buildDailyExportPayload({ dayLabel, day, targetKcal, dayKcal, itemCount, dayServings, recommendedServings }) {
-  const now = new Date();
-  const chartData = buildServingChartData(dayServings, recommendedServings);
-  const meals = MEALS.map((meal) => {
-    const list = (day[meal.id] || []).map(normalizeRecordFood);
-    const calories = list.reduce((sum, item) => sum + (item.kcal || 0), 0);
-    return {
-      ...meal,
-      calories,
-      count: list.length,
-      preview: list.slice(0, 3).map((item) => item.name).join("、") || "尚未記錄",
-    };
-  });
-
-  return {
-    fileStamp: createFileStamp(now),
-    createdAtLabel: new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" }).format(now),
-    dayLabel,
-    dayKcal: Math.round(dayKcal),
-    targetKcal: Math.round(targetKcal),
-    completion: Math.min(100, Math.round((dayKcal / Math.max(1, targetKcal)) * 100)),
-    itemCount,
-    meals,
-    chartData,
-  };
-}
-
-async function renderDailyRecordCanvas(payload, variant = "landscape") {
-  if ("fonts" in document) {
-    await document.fonts.ready;
-  }
-
-  const isPortrait = variant === "photo";
-  const width = isPortrait ? 1080 : 1600;
-  const height = isPortrait ? 2200 : 1080;
-  const padding = isPortrait ? 48 : 64;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error("無法建立今日紀錄匯出圖檔。");
-  }
-
-  const chartMax = Math.max(
-    1,
-    ...payload.chartData.map((item) => Math.max(item.current, item.target, RECORDING_UNIT)),
-  );
-
-  const gradient = context.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#fffdf8");
-  gradient.addColorStop(1, "#eef6ef");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
-
-  context.globalAlpha = 0.18;
-  context.fillStyle = "#f7c887";
-  context.beginPath();
-  context.arc(width - padding - 20, 120, isPortrait ? 120 : 160, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = "#9fd7ad";
-  context.beginPath();
-  context.arc(padding + 80, height - 130, isPortrait ? 130 : 180, 0, Math.PI * 2);
-  context.fill();
-  context.globalAlpha = 1;
-
-  context.fillStyle = "#5f9d78";
-  context.font = '700 20px "Noto Sans TC", "PingFang TC", sans-serif';
-  context.fillText("Daily Food Journal", padding, padding - 4);
-
-  context.fillStyle = "#203232";
-  context.font = isPortrait
-    ? '700 48px "Noto Sans TC", "PingFang TC", sans-serif'
-    : '700 56px "Noto Sans TC", "PingFang TC", sans-serif';
-  context.fillText(`${payload.dayLabel} · 今日飲食摘要`, padding, padding + 54);
-
-  context.fillStyle = "#627172";
-  context.font = '500 22px "Noto Sans TC", "PingFang TC", sans-serif';
-  wrapCanvasText(
-    context,
-    `匯出時間 ${payload.createdAtLabel}，整理今日熱量、各餐紀錄與六大類份數進度。`,
-    width - padding * 2,
-  ).forEach((line, index) => {
-    context.fillText(line, padding, padding + 94 + index * 30);
-  });
-
-  const metricY = isPortrait ? padding + 150 : padding + 132;
-  const metricGap = 18;
-  const metricWidth = isPortrait
-    ? width - padding * 2
-    : (width - padding * 2 - metricGap * 3) / 4;
-  const metricHeight = 132;
-  const metrics = [
-    ["今日熱量", `${payload.dayKcal} kcal`, `目標 ${payload.targetKcal} kcal`],
-    ["完成度", `${payload.completion}%`, `共記錄 ${payload.itemCount} 項`],
-    ["餐次", `${payload.meals.filter((meal) => meal.count > 0).length} 餐`, "早餐到宵夜的實際紀錄"],
-    ["份數重點", `${[...payload.chartData].sort((a, b) => b.current - a.current)[0]?.label || "尚未記錄"}`, "今天份數最高的類別"],
+  // Pre-fill day 0 with example entries.
+  week[0].meals.breakfast = [
+    { id: "1", name: "燕麥粥", category: "grains", amount: 1.5, cal: 105 },
+    { id: "2", name: "水煮蛋", category: "protein", amount: 1, cal: 75 },
+    { id: "3", name: "無糖豆漿", category: "dairy", amount: 1, cal: 75 },
   ];
+  week[0].meals.lunch = [
+    { id: "4", name: "糙米飯", category: "grains", amount: 2, cal: 140 },
+    { id: "5", name: "雞胸肉", category: "protein", amount: 2, cal: 150 },
+    { id: "6", name: "炒青菜", category: "vegetables", amount: 1.5, cal: 38 },
+    { id: "7", name: "蘋果", category: "fruits", amount: 1, cal: 60 },
+  ];
+  return week;
+})();
 
-  metrics.forEach(([label, value, detail], index) => {
-    const x = isPortrait ? padding : padding + index * (metricWidth + metricGap);
-    const y = isPortrait ? metricY + index * (metricHeight + 14) : metricY;
-    drawRoundedRect(context, x, y, metricWidth, metricHeight, 28, "rgba(255,255,255,0.92)", "rgba(31,44,42,0.08)");
-    context.fillStyle = "#6a7d79";
-    context.font = '700 20px "Noto Sans TC", "PingFang TC", sans-serif';
-    context.fillText(label, x + 24, y + 38);
-    context.fillStyle = "#203232";
-    context.font = '700 34px "Noto Sans TC", "PingFang TC", sans-serif';
-    wrapCanvasText(context, value, metricWidth - 48).forEach((line, lineIndex) => {
-      context.fillText(line, x + 24, y + 78 + lineIndex * 34);
-    });
-    context.fillStyle = "#6c7b7b";
-    context.font = '500 18px "Noto Sans TC", "PingFang TC", sans-serif';
-    wrapCanvasText(context, detail, metricWidth - 48).forEach((line, lineIndex) => {
-      context.fillText(line, x + 24, y + 112 + lineIndex * 24);
-    });
-  });
-
-  const mealPanelY = isPortrait ? metricY + metrics.length * (metricHeight + 14) + 18 : metricY + metricHeight + 28;
-  const mealPanelWidth = isPortrait ? width - padding * 2 : width * 0.44 - padding;
-  const chartPanelX = isPortrait ? padding : padding + mealPanelWidth + 24;
-  const chartPanelWidth = isPortrait ? width - padding * 2 : width - chartPanelX - padding;
-  const mealPanelHeight = isPortrait ? 700 : 620;
-  const chartPanelHeight = isPortrait ? 590 : 620;
-
-  drawRoundedRect(context, padding, mealPanelY, mealPanelWidth, mealPanelHeight, 32, "rgba(255,255,255,0.92)", "rgba(31,44,42,0.08)");
-  context.fillStyle = "#203232";
-  context.font = '700 30px "Noto Sans TC", "PingFang TC", sans-serif';
-  context.fillText("今日各餐紀錄", padding + 28, mealPanelY + 48);
-  context.fillStyle = "#6c7b7b";
-  context.font = '500 18px "Noto Sans TC", "PingFang TC", sans-serif';
-  context.fillText("每餐的小計熱量與已記錄食物數量。", padding + 28, mealPanelY + 78);
-
-  const mealCardWidth = isPortrait ? mealPanelWidth - 56 : (mealPanelWidth - 84) / 2;
-  const mealCardHeight = 100;
-  payload.meals.forEach((meal, index) => {
-    const x = isPortrait
-      ? padding + 28
-      : padding + 28 + (index % 2) * (mealCardWidth + 28);
-    const y = isPortrait
-      ? mealPanelY + 108 + index * (mealCardHeight + 12)
-      : mealPanelY + 108 + Math.floor(index / 2) * (mealCardHeight + 14);
-    drawRoundedRect(context, x, y, mealCardWidth, mealCardHeight, 24, "rgba(250,249,244,0.98)", "rgba(31,44,42,0.08)");
-    context.fillStyle = "#203232";
-    context.font = '700 24px "Noto Sans TC", "PingFang TC", sans-serif';
-    context.fillText(`${meal.icon} ${meal.label}`, x + 18, y + 34);
-    context.fillStyle = "#5a6d69";
-    context.font = '700 22px "Noto Sans TC", "PingFang TC", sans-serif';
-    context.fillText(`${Math.round(meal.calories)} kcal`, x + 18, y + 66);
-    context.fillStyle = "#7a8785";
-    context.font = '500 16px "Noto Sans TC", "PingFang TC", sans-serif';
-    const preview = meal.count > 0 ? `${meal.count} 項 · ${meal.preview}` : "尚未記錄";
-    wrapCanvasText(context, preview, mealCardWidth - 36).slice(0, 2).forEach((line, lineIndex) => {
-      context.fillText(line, x + 18, y + 90 + lineIndex * 20);
-    });
-  });
-
-  drawRoundedRect(context, chartPanelX, mealPanelY, chartPanelWidth, chartPanelHeight, 32, "rgba(255,255,255,0.92)", "rgba(31,44,42,0.08)");
-  context.fillStyle = "#203232";
-  context.font = '700 30px "Noto Sans TC", "PingFang TC", sans-serif';
-  context.fillText("今日各類食物份數", chartPanelX + 28, mealPanelY + 48);
-  context.fillStyle = "#6c7b7b";
-  context.font = '500 18px "Noto Sans TC", "PingFang TC", sans-serif';
-  context.fillText("目前份數、建議份數與進度一併整理。", chartPanelX + 28, mealPanelY + 78);
-
-  const barYStart = mealPanelY + 116;
-  payload.chartData.forEach((item, index) => {
-    const y = barYStart + index * 72;
-    const accent = resolveCssColor(item.accent, "#9ed5a4");
-    const tint = resolveCssColor(item.tint, "#eef6ef");
-    const barWidth = chartPanelWidth - 240;
-    const barX = chartPanelX + 180;
-    const currentWidth = item.current > 0 ? Math.max(10, (item.current / chartMax) * barWidth) : 0;
-    const targetX = barX + Math.min(barWidth, (item.target / chartMax) * barWidth);
-
-    context.fillStyle = "#203232";
-    context.font = '700 20px "Noto Sans TC", "PingFang TC", sans-serif';
-    context.fillText(`${item.icon} ${shortFoodGroupLabel(item.label)}`, chartPanelX + 28, y + 24);
-
-    drawRoundedRect(context, barX, y, barWidth, 22, 11, tint, "rgba(31,44,42,0.06)");
-    if (currentWidth > 0) {
-      drawRoundedRect(context, barX, y, currentWidth, 22, 11, accent);
-    }
-    context.strokeStyle = "#203232";
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(targetX, y - 6);
-    context.lineTo(targetX, y + 28);
-    context.stroke();
-
-    context.fillStyle = "#5d6f6c";
-    context.font = '600 16px "Noto Sans TC", "PingFang TC", sans-serif';
-    context.fillText(`${window.NUTRITION.fmt(item.current)} / ${window.NUTRITION.fmt(item.target)} 份`, barX, y + 50);
-    context.fillText(
-      Math.abs(item.delta) < 0.1
-        ? "剛好達標"
-        : item.delta >= 0
-          ? `多 ${window.NUTRITION.fmt(Math.abs(item.delta))} 份`
-          : `少 ${window.NUTRITION.fmt(Math.abs(item.delta))} 份`,
-      chartPanelX + chartPanelWidth - 160,
-      y + 50,
-    );
-  });
-
-  return canvas;
+function loadWeek() {
+  try {
+    const raw = localStorage.getItem("nutrition.week");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return SAMPLE_WEEK;
 }
 
-async function exportDailyRecordSnapshot(format, payload) {
-  switch (format) {
-    case "photo": {
-      const canvas = await renderDailyRecordCanvas(payload, "photo");
-      const blob = await canvasToBlob(canvas, "image/jpeg", 0.95);
-      const filename = `diet-record-photo-${payload.fileStamp}.jpg`;
-      downloadBlob(blob, filename);
-      return filename;
-    }
-    case "png": {
-      const canvas = await renderDailyRecordCanvas(payload, "landscape");
-      const blob = await canvasToBlob(canvas, "image/png");
-      const filename = `diet-record-image-${payload.fileStamp}.png`;
-      downloadBlob(blob, filename);
-      return filename;
-    }
-    case "jpg": {
-      const canvas = await renderDailyRecordCanvas(payload, "landscape");
-      const blob = await canvasToBlob(canvas, "image/jpeg", 0.94);
-      const filename = `diet-record-summary-${payload.fileStamp}.jpg`;
-      downloadBlob(blob, filename);
-      return filename;
-    }
-    case "pdf": {
-      const canvas = await renderDailyRecordCanvas(payload, "landscape");
-      const bytes = dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.94));
-      const blob = createPdfBlob([{ bytes, width: canvas.width, height: canvas.height }]);
-      const filename = `diet-record-summary-${payload.fileStamp}.pdf`;
-      downloadBlob(blob, filename);
-      return filename;
-    }
-    default:
-      throw new Error("不支援的匯出格式。");
-  }
+function loadProfile3() {
+  try {
+    const raw = localStorage.getItem("nutrition.profile");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
 }
 
-function ServingTouchChart({ currentServings, targetServings }) {
-  const chartData = useMemo(
-    () => buildServingChartData(currentServings, targetServings),
-    [currentServings, targetServings],
-  );
-  const allCurrentZero = chartData.every((item) => item.current <= 0);
-  const totalCurrent = chartData.reduce((sum, item) => sum + item.current, 0);
-  const suggestedId = useMemo(() => {
-    return [...chartData]
-      .sort((left, right) => right.current - left.current || right.target - left.target)[0]?.id
-      || chartData[0]?.id
-      || "grains";
-  }, [chartData]);
-  const [activeId, setActiveId] = useState(suggestedId);
+function uid() { return Math.random().toString(36).slice(2, 9); }
 
-  useEffect(() => {
-    setActiveId(suggestedId);
-  }, [suggestedId]);
-
-  const activeItem = chartData.find((item) => item.id === activeId) || chartData[0];
-  const rankedItems = [...chartData].sort((left, right) => right.current - left.current || right.target - left.target);
-
-  if (!activeItem) return null;
-
-  const activeProgress = Math.min(100, activeItem.target > 0 ? (activeItem.current / activeItem.target) * 100 : 0);
-  const activeShare = totalCurrent > 0 ? (activeItem.current / totalCurrent) * 100 : 0;
-  const activeStatusText = Math.abs(activeItem.delta) < 0.1
-    ? "今天這一類剛好達標。"
-    : activeItem.delta > 0
-      ? `比建議多 ${window.NUTRITION.fmt(Math.abs(activeItem.delta))} 份。`
-      : `距離建議還少 ${window.NUTRITION.fmt(Math.abs(activeItem.delta))} 份。`;
-
-  const topHighlights = rankedItems
-    .filter((item) => item.current > 0)
-    .slice(0, 3);
-
-  return (
-    <article className="card serving-touch-board">
-      <div className="card-eyebrow"><span aria-hidden="true">🫶</span>互動圖表</div>
-      <h2 className="card-title">今天哪一類吃得比較多？</h2>
-      <p className="card-sub">滑過去或點一下下面的小卡，就能看到今天在那一類累積了多少份，整體會更像日常的進度總覽。</p>
-
-      <div
-        className={"serving-touch-hero" + (allCurrentZero ? " is-empty" : "")}
-        style={{ "--std": activeItem.color, "--stt": activeItem.tint, "--sta": activeItem.accent }}
-      >
-        <div className="serving-touch-hero-visual">
-          <div className="serving-touch-hero-icon" aria-hidden="true">
-            {allCurrentZero ? "🌱" : activeItem.icon}
-          </div>
-          <div className="serving-touch-hero-mini">
-            {topHighlights.length > 0 ? (
-              topHighlights.map((item) => (
-                <span
-                  key={item.id}
-                  className={"serving-touch-hero-mini-pill" + (item.id === activeItem.id ? " is-active" : "")}
-                  style={{ "--pill": item.accent, "--pill-tint": item.tint }}
-                >
-                  <span aria-hidden="true">{item.icon}</span>
-                  {shortFoodGroupLabel(item.label)}
-                </span>
-              ))
-            ) : (
-              <span className="serving-touch-hero-empty">今天還沒開始記錄六大類份數</span>
-            )}
-          </div>
-        </div>
-
-        <div className="serving-touch-hero-copy">
-          <span className="serving-touch-kicker">{allCurrentZero ? "今日狀態" : "目前主角"}</span>
-          <strong>{allCurrentZero ? "先從第一份開始記錄" : activeItem.label}</strong>
-          <p>
-            {allCurrentZero
-              ? "現在六大類都還是 0 份，先點上方快速記錄區加入早餐、午餐、晚餐、點心或宵夜。"
-              : <>今天這一類已累積 <b>{window.NUTRITION.fmt(activeItem.current)} 份</b>，建議是 {window.NUTRITION.fmt(activeItem.target)} 份。{activeStatusText}</>}
-          </p>
-
-          <div className="serving-touch-hero-pills">
-            <span className="serving-touch-hero-pill">
-              <b>{window.NUTRITION.fmt(activeItem.current)}</b> 份目前累積
-            </span>
-            <span className="serving-touch-hero-pill">
-              <b>{window.NUTRITION.fmt(activeItem.target)}</b> 份今日建議
-            </span>
-            <span className="serving-touch-hero-pill">
-              <b>{formatPercent(activeProgress)}</b> 達成度
-            </span>
-          </div>
-        </div>
-
-        <div className="serving-touch-hero-side">
-          <div className="serving-touch-hero-meter">
-            <div className="serving-touch-hero-meter-ring" style={{ "--progress": `${activeProgress}%` }}>
-              <span>{formatPercent(activeProgress)}</span>
-            </div>
-            <small>{allCurrentZero ? "尚未開始" : "目前完成度"}</small>
-          </div>
-          <div className="serving-touch-hero-note">
-            <b>{formatPercent(activeShare)}</b>
-            <span>占今天已記錄份數</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="serving-touch-grid" role="list" aria-label="今日各類食物份數互動圖表">
-        {chartData.map((item) => {
-          const progress = Math.min(100, item.target > 0 ? (item.current / item.target) * 100 : 0);
-          const statusLabel = Math.abs(item.delta) < 0.1
-            ? "剛好"
-            : item.delta > 0
-              ? `多 ${window.NUTRITION.fmt(Math.abs(item.delta))}`
-              : `少 ${window.NUTRITION.fmt(Math.abs(item.delta))}`;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="listitem"
-              className={"serving-touch-card" + (item.id === activeId ? " is-active" : "")}
-              style={{ "--st": item.accent, "--std": item.color, "--stt": item.tint, "--progress": `${progress}%` }}
-              onMouseEnter={() => setActiveId(item.id)}
-              onFocus={() => setActiveId(item.id)}
-              onClick={() => setActiveId(item.id)}
-            >
-              <div className="serving-touch-card-head">
-                <span className="serving-touch-card-badge" aria-hidden="true">{item.icon}</span>
-                <span className="serving-touch-card-status">{statusLabel}</span>
-              </div>
-
-              <div className="serving-touch-card-copy">
-                <strong>{shortFoodGroupLabel(item.label)}</strong>
-                <span>{window.NUTRITION.fmt(item.current)} / {window.NUTRITION.fmt(item.target)} 份</span>
-              </div>
-
-              <div className="serving-touch-card-progress">
-                <span className="serving-touch-card-progress-fill" />
-              </div>
-
-              <div className="serving-touch-card-foot">
-                <span>{item.current > 0 ? `${formatPercent(progress)} 已完成` : "今天還沒吃到"}</span>
-                <span>{item.desc}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </article>
-  );
+function dayTotal(day) {
+  return Object.values(day.meals).flat().reduce((a, e) => a + (Number(e.cal) || 0), 0);
 }
 
-function RecordsPage({ targetKcal, recommendedServings, onToast }) {
-  const [week, setWeek] = useState(() => loadRecords());
-  const [activeDay, setActiveDay] = useState(0);
-  const [activeMeal, setActiveMeal] = useState("breakfast");
-  const [exportingFormat, setExportingFormat] = useState(null);
+function RecordsPage() {
+  const [week, setWeek] = React.useState(loadWeek);
+  const [active, setActive] = React.useState(0);
+  const [drafts, setDrafts] = React.useState(() => {
+    const d = {};
+    for (let i = 0; i < 7; i++) for (const m of MEALS) d[`${i}:${m.id}`] = { name: "", category: "grains", amount: "", cal: "" };
+    return d;
+  });
 
-  useEffect(() => { saveRecords(week); }, [week]);
+  const profile = loadProfile3();
+  const target = profile ? rc3(profile.weightKg, profile.goal) : null;
 
-  const day = week[activeDay] || emptyDay();
-  const dayKcal = MEALS.reduce((acc, m) => acc + (day[m.id]?.reduce((a, f) => a + (f.kcal || 0), 0) || 0), 0);
-  const itemCount = MEALS.reduce((acc, m) => acc + (day[m.id]?.length || 0), 0);
-  const completion = Math.min(100, (dayKcal / Math.max(1, targetKcal)) * 100);
-  const dayServings = sumDayServings(day);
+  React.useEffect(() => {
+    try { localStorage.setItem("nutrition.week", JSON.stringify(week)); } catch (e) {}
+  }, [week]);
 
-  function add(food) {
-    setWeek(w => {
-      const next = w.map((d, i) => i === activeDay ? { ...d } : d);
-      const cur = next[activeDay];
-      cur[activeMeal] = [...(cur[activeMeal] || []), { ...food, id: Date.now() + Math.random() }];
-      return next;
+  const day = week[active];
+  const dayCal = dayTotal(day);
+  const weekCal = week.reduce((a, d) => a + dayTotal(d), 0);
+  const filledDays = week.filter((d) => Object.values(d.meals).flat().length > 0).length;
+
+  function setDraft(key, patch) { setDrafts((d) => ({ ...d, [key]: { ...d[key], ...patch } })); }
+  function addEntry(mealId) {
+    const key = `${active}:${mealId}`;
+    const dr = drafts[key];
+    if (!dr.name.trim()) return;
+    const amount = Number(dr.amount) || 1;
+    const cal = dr.cal !== "" ? Number(dr.cal) : Math.round((CAT_CAL_PER_SERVING[dr.category] || 50) * amount);
+    setWeek((w) => {
+      const nw = [...w];
+      nw[active] = { ...nw[active], meals: { ...nw[active].meals, [mealId]: [...nw[active].meals[mealId], { id: uid(), name: dr.name.trim(), category: dr.category, amount, cal }] } };
+      return nw;
     });
-    onToast({ icon: "✨", text: `已加入 ${food.icon} ${food.name}` });
+    setDraft(key, { name: "", amount: "", cal: "" });
   }
-  function remove(mealId, foodId) {
-    setWeek(w => {
-      const next = w.map((d, i) => i === activeDay ? { ...d } : d);
-      const cur = next[activeDay];
-      cur[mealId] = (cur[mealId] || []).filter(f => f.id !== foodId);
-      return next;
+  function removeEntry(mealId, id) {
+    setWeek((w) => {
+      const nw = [...w];
+      nw[active] = { ...nw[active], meals: { ...nw[active].meals, [mealId]: nw[active].meals[mealId].filter((e) => e.id !== id) } };
+      return nw;
     });
   }
-  function clearMeal(mealId) {
-    const meal = MEALS.find((item) => item.id === mealId);
-    const list = day[mealId] || [];
-    if (list.length === 0) return;
-    if (!confirm(`確定要清空${meal?.label || "這一餐"}嗎？`)) return;
-    setWeek(w => {
-      const next = w.map((d, i) => i === activeDay ? { ...d } : d);
-      const cur = next[activeDay];
-      cur[mealId] = [];
-      return next;
-    });
-    onToast({ icon: "🧹", text: `已清空${meal?.label || "這一餐"}` });
-  }
 
-  function dayTotalK(d) {
-    return MEALS.reduce((a, m) => a + (d[m.id]?.reduce((x, f) => x + (f.kcal || 0), 0) || 0), 0);
-  }
-
-  async function handleExport(format) {
-    try {
-      setExportingFormat(format);
-      const payload = buildDailyExportPayload({
-        dayLabel: DAY_LABELS[activeDay],
-        day,
-        targetKcal,
-        dayKcal,
-        itemCount,
-        dayServings,
-        recommendedServings,
-      });
-      const filename = await exportDailyRecordSnapshot(format, payload);
-      onToast({ icon: "💾", text: `已匯出 ${filename}` });
-    } catch (error) {
-      onToast({ icon: "⚠️", text: error instanceof Error ? error.message : "匯出失敗，請再試一次。" });
-    } finally {
-      setExportingFormat(null);
-    }
-  }
+  const delta = target ? dayCal - target : 0;
+  const status = !target ? null : Math.abs(delta) <= 150 ? { label: "接近建議值", tone: "ok" }
+    : delta > 0 ? { label: `高於建議 ${Math.round(delta)} kcal`, tone: "over" }
+    : { label: `低於建議 ${Math.round(-delta)} kcal`, tone: "under" };
 
   return (
     <>
-      <section className="shell guide-hero">
-        <SectionTitle
-          eyebrow="Diet Records · 七日紀錄"
-          title="記下這一週的飲食"
-          sub="用六大類快速記錄早餐、午餐、晚餐、點心與宵夜，每按一次就以 0.5 份累計。資料會自動存在你的瀏覽器中。"
-        />
-      </section>
-      <section className="shell records">
-        <aside style={{ display: "grid", gap: 12, alignContent: "start" }}>
-          <article className="card" style={{ padding: 18 }}>
-            <div className="card-eyebrow"><span aria-hidden="true">📅</span>本週</div>
-            <h3 className="card-title" style={{ fontSize: 18 }}>選擇日期</h3>
-            <div className="day-list" style={{ marginTop: 12 }}>
-              {DAY_LABELS.map((d, i) => {
-                const k = Math.round(dayTotalK(week[i]));
-                return (
-                  <button
-                    key={i}
-                    className={"day-pill" + (activeDay === i ? " is-active" : "")}
-                    onClick={() => setActiveDay(i)}
-                  >
-                    <span className="day-name">{d}</span>
-                    <span className="day-meta">{k > 0 ? `${k} kcal` : "未紀錄"}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </article>
+      <PageHead
+        eyebrow="WEEKLY DIET RECORDS · 七天紀錄"
+        title='記下這一週<em>吃了什麼</em>'
+        sub="按日期切換，分早午晚與點心填入飲食內容；系統會自動加總每日熱量，並對照計算器頁面的建議值。"
+      />
 
-          <article className="card is-tinted-cream" style={{ padding: 18 }}>
-            <div className="card-eyebrow"><span aria-hidden="true">📊</span>今日總覽</div>
-            <h3 className="card-title" style={{ fontSize: 18 }}>{DAY_LABELS[activeDay]}</h3>
-            <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
-                  <span style={{ color: "var(--ink-soft)", fontWeight: 700 }}>熱量</span>
-                  <span style={{ fontWeight: 700 }}>
-                    <span style={{ fontFamily: "var(--font-display)", fontSize: 20 }}>{Math.round(dayKcal)}</span>
-                    <span style={{ color: "var(--ink-soft)" }}> / {targetKcal} kcal</span>
-                  </span>
-                </div>
-                <div className="stat-bar"><i style={{ width: `${completion}%`, background: "var(--orange)" }} /></div>
-                <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink-soft)" }}>
-                  完成度 {completion.toFixed(0)}% · 已紀錄 {itemCount} 項
-                </div>
-              </div>
-              <div className="records-summary-note">
-                已改成每餐都能個別清空，從下方的早餐、午餐、晚餐、點心、宵夜卡片操作就可以。
-              </div>
-              <div className="records-export-panel">
-                <div className="records-export-title">匯出今日摘要</div>
-                <div className="records-export-actions">
-                  {EXPORT_ACTIONS.map((action) => {
-                    const busy = exportingFormat === action.format;
-                    return (
-                      <button
-                        key={action.format}
-                        className="btn records-export-btn"
-                        onClick={() => handleExport(action.format)}
-                        disabled={exportingFormat !== null}
-                      >
-                        <span aria-hidden="true">{action.icon}</span>
-                        {busy ? "匯出中..." : action.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </article>
-        </aside>
-
-        <div className="day-detail">
-          <div className="quick-add">
-            <div className="quick-add-title">
-              <span aria-hidden="true">🥗</span>
-              <span>六大類快速記錄 · 每按一次 + {RECORDING_UNIT} 份 到</span>
-              <select
-                className="select"
-                style={{ padding: "4px 28px 4px 10px", fontSize: 12, fontWeight: 700, height: 28, marginLeft: 4 }}
-                value={activeMeal}
-                onChange={e => setActiveMeal(e.target.value)}
-              >
-                {MEALS.map(m => <option key={m.id} value={m.id}>{m.icon} {m.label}</option>)}
-              </select>
-            </div>
-            <div className="quick-add-hint">用六大類份數快速累計今天的早餐、午餐、晚餐、點心與宵夜進度。</div>
-            <div className="quick-chips">
-              {QUICK_GROUP_RECORDS.map(f => (
-                <button key={f.name} className="quick-chip" onClick={() => add(f)}>
-                  <span className="quick-chip-ico" aria-hidden="true">{f.icon}</span>
-                  <span className="quick-chip-main">
-                    <span className="quick-chip-name">{f.name}</span>
-                    <span className="quick-chip-meta">+ {f.amt} · {f.kcal} kcal</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {MEALS.map(m => {
-            const list = day[m.id] || [];
-            const k = list.reduce((a, f) => a + (f.kcal || 0), 0);
+      <section className="container" style={{ paddingBottom: 80, display: "grid", gap: 22 }}>
+        {/* Day tabs */}
+        <div className="day-tabs">
+          {week.map((d, i) => {
+            const has = Object.values(d.meals).flat().length > 0;
+            const cal = dayTotal(d);
+            const dt = d.date.split("-");
             return (
-              <article key={m.id} className="meal-card">
+              <button key={i} className={"day-tab " + (active === i ? "active" : "")} onClick={() => setActive(i)}>
+                <span className="day-name">星期{DAYS[i]}</span>
+                <span className="day-date">{dt[1]}/{dt[2]}</span>
+                <span className="day-cal">{has ? `${cal} kcal` : "—"}</span>
+                <span className={"day-status " + (has ? "filled" : "")}/>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Day stats */}
+        <div className="stats">
+          <article className="stat rise" style={{ "--motion-delay": "40ms" }}>
+            <span className="label">當日總熱量</span>
+            <strong className="value"><Counter value={dayCal}/><small>kcal</small></strong>
+            <p className="hint">{status ? status.label : "尚未在計算器設定目標"}</p>
+            <span className="corner-mark">日</span>
+          </article>
+          <article className="stat rise" style={{ "--motion-delay": "100ms" }}>
+            <span className="label">建議值</span>
+            <strong className="value">{target || "—"}<small>kcal</small></strong>
+            <p className="hint">{profile ? `${GO3.find((g) => g.value === profile.goal).label} · ${profile.weightKg} kg` : "請先在計算器頁面輸入"}</p>
+            <span className="corner-mark">標</span>
+          </article>
+          <article className="stat rise" style={{ "--motion-delay": "160ms" }}>
+            <span className="label">本週總熱量</span>
+            <strong className="value"><Counter value={weekCal}/><small>kcal</small></strong>
+            <p className="hint">已紀錄 {filledDays} / 7 天</p>
+            <span className="corner-mark">週</span>
+          </article>
+          <article className="stat rise" style={{ "--motion-delay": "220ms" }}>
+            <span className="label">建議週累計</span>
+            <strong className="value">{target ? target * 7 : "—"}<small>kcal</small></strong>
+            <p className="hint">建議值 × 7 天</p>
+            <span className="corner-mark">∑</span>
+          </article>
+        </div>
+
+        {/* Meal cards */}
+        <div className="meal-grid">
+          {MEALS.map((m, i) => {
+            const entries = day.meals[m.id];
+            const draftKey = `${active}:${m.id}`;
+            const draft = drafts[draftKey];
+            const mealCal = entries.reduce((a, e) => a + e.cal, 0);
+            return (
+              <article key={m.id} className="meal-card rise" style={{ "--motion-delay": `${i * 60}ms` }}>
                 <div className="meal-head">
-                  <div className="meal-name">
-                    <span className="meal-ico" style={{ background: m.tint }}>{m.icon}</span>
-                    {m.label}
-                  </div>
-                  <div className="meal-actions">
-                    <span className="meal-kcal">{Math.round(k)} kcal</span>
-                    <button
-                      className="btn"
-                      style={{ padding: "6px 12px", fontSize: 12 }}
-                      onClick={() => { setActiveMeal(m.id); }}
-                    >
-                      <span aria-hidden="true">＋</span>選此餐
-                    </button>
-                    <button
-                      className="btn btn-soft-danger"
-                      style={{ padding: "6px 12px", fontSize: 12 }}
-                      onClick={() => clearMeal(m.id)}
-                      disabled={list.length === 0}
-                    >
-                      <span aria-hidden="true">🧹</span>清空{m.label}
-                    </button>
-                  </div>
+                  <h3><span className="icon">{m.icon}</span>{m.label}</h3>
+                  <span className="meal-cal">{mealCal} kcal · {entries.length} 項</span>
                 </div>
-                {list.length === 0 ? (
-                  <div className="empty-meal">
-                    <span className="ico" aria-hidden="true">{m.icon}</span>
-                    {activeDay === 0 && m.id === "breakfast"
-                      ? "今天還沒有紀錄，先從早餐開始吧！"
-                      : `${m.label}還是空的，點上方六大類快速記錄加入吧。`}
-                  </div>
+
+                {entries.length === 0 ? (
+                  <div className="entry-empty">尚未記錄</div>
                 ) : (
-                  <div>
-                    {list.map(f => (
-                      <div key={f.id} className="food-row">
-                        <div className="food-info">
-                          <span className="ico" aria-hidden="true">{f.icon}</span>
-                          <div>
-                            <div className="food-name">{f.name}</div>
-                            <div className="food-amt">{f.amt}</div>
-                          </div>
+                  <div className="entry-list">
+                    {entries.map((e) => {
+                      const cat = FG3.find((g) => g.id === e.category);
+                      return (
+                        <div key={e.id} className="entry-row">
+                          <div className="cat-dot" style={hueVars(cat?.hue || "grain")}>{cat?.short || "·"}</div>
+                          <span className="name">{e.name}<span className="amount">{e.amount} 份</span></span>
+                          <span className="cal">{e.cal} kcal</span>
+                          <button className="delete-btn" onClick={() => removeEntry(m.id, e.id)} aria-label="刪除">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                          </button>
                         </div>
-                        <span className="food-kcal">{f.kcal} kcal</span>
-                        <button className="food-x" onClick={() => remove(m.id, f.id)} aria-label="移除">×</button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
+
+                <div className="entry-form">
+                  <input className="input name-input" placeholder="食物名稱" value={draft.name}
+                    onChange={(e) => setDraft(draftKey, { name: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter") addEntry(m.id); }}/>
+                  <select className="select" value={draft.category} onChange={(e) => setDraft(draftKey, { category: e.target.value })}>
+                    {CAT_OPTIONS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                  <input className="input" placeholder="份數" type="number" step="0.5" value={draft.amount}
+                    onChange={(e) => setDraft(draftKey, { amount: e.target.value })}/>
+                  <input className="input" placeholder="kcal" type="number" value={draft.cal}
+                    onChange={(e) => setDraft(draftKey, { cal: e.target.value })}/>
+                  <button className="btn primary add-btn" onClick={() => addEntry(m.id)}>新增</button>
+                </div>
               </article>
             );
           })}
-
-          {window.ServingGuideBoard ? (
-            <window.ServingGuideBoard
-              targetServings={recommendedServings}
-              currentServings={dayServings}
-              title="今日各類食物份數"
-              subtitle="現在改成每按一次就以 0.5 份累計，圖案也會跟著目前進度慢慢增加。"
-              showProgress
-            />
-          ) : null}
-
-          <ServingTouchChart
-            currentServings={dayServings}
-            targetServings={recommendedServings}
-          />
         </div>
+
+        <p className="disclaimer">資料儲存於本機瀏覽器 localStorage；切換裝置後不會同步。</p>
       </section>
     </>
   );
 }
+
 window.RecordsPage = RecordsPage;
