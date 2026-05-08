@@ -301,6 +301,23 @@ const QUIZ_OPTIONS = [
   },
 ];
 
+const HERO_FOOD_BUBBLES = [
+  { id: "rice", emoji: "🍙", label: "飯糰", face: "◍•ᴗ•◍" },
+  { id: "green", emoji: "🥦", label: "菜菜", face: "˶ᵔ ᵕ ᵔ˶" },
+  { id: "egg", emoji: "🥚", label: "蛋蛋", face: "◕‿◕" },
+  { id: "milk", emoji: "🥛", label: "牛奶", face: "˘ᵕ˘" },
+  { id: "meat", emoji: "🍗", label: "肉肉", face: "๑•̀ㅂ•́)و" },
+  { id: "fruit", emoji: "🍎", label: "水果", face: "•ᴗ•" },
+  { id: "sweetpotato", emoji: "🍠", label: "地瓜", face: "◜‿◝" },
+  { id: "tomato", emoji: "🍅", label: "番茄", face: "˃ᴗ˂" },
+];
+
+const HERO_FOOD_STICKERS = [
+  { emoji: "🥦", title: "菜菜多一點", note: "有份量感更不容易餓" },
+  { emoji: "🍗", title: "肉肉要吃到", note: "蛋白質是飽足感關鍵" },
+  { emoji: "🍠", title: "主食不用怕", note: "抓適量就很剛好" },
+];
+
 function scrollMealGuideSection(sectionId) {
   document.getElementById(`meal-guide-${sectionId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -351,12 +368,28 @@ function MealGuidePage() {
 
           <div className="meal-guide-visual" aria-hidden="true">
             <div className="meal-guide-plate">
-              <span className="plate-food is-rice">🍙</span>
-              <span className="plate-food is-egg">🥚</span>
-              <span className="plate-food is-milk">🥛</span>
-              <span className="plate-food is-green">🥦</span>
-              <span className="plate-food is-meat">🍗</span>
-              <span className="plate-food is-fruit">🍎</span>
+              <div className="meal-guide-plate-center">
+                <strong>三餐小餐盤</strong>
+                <span>蛋白質 + 蔬菜 + 適量主食</span>
+              </div>
+              {HERO_FOOD_BUBBLES.map((item) => (
+                <article key={item.id} className={`plate-food is-${item.id}`}>
+                  <span className="plate-food-emoji">{item.emoji}</span>
+                  <span className="plate-food-face">{item.face}</span>
+                  <small className="plate-food-label">{item.label}</small>
+                </article>
+              ))}
+            </div>
+            <div className="meal-guide-sticker-cloud">
+              {HERO_FOOD_STICKERS.map((item, index) => (
+                <article key={item.title} className={`meal-guide-sticker is-${index + 1}`}>
+                  <span className="meal-guide-sticker-emoji" aria-hidden="true">{item.emoji}</span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.note}</span>
+                  </div>
+                </article>
+              ))}
             </div>
             <div className="meal-guide-mini-cards">
               <article><strong>早餐</strong><span>先補蛋白質</span></article>
