@@ -40,9 +40,10 @@
   --bmi-deep: #3ea096;
 
   /* Type — rounded, friendly */
-  --font-sans: "Nunito", "Noto Sans TC", "PingFang TC",
-    "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
-  --font-display: "M PLUS Rounded 1c", "Nunito", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-sans: "Nunito", "Klee One", "M PLUS Rounded 1c", "Noto Sans TC",
+    "PingFang TC", "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
+  --font-display: "Yusei Magic", "Klee One", "M PLUS Rounded 1c", "Nunito",
+    "Noto Sans TC", "PingFang TC", sans-serif;
 
   /* Radii / shadow */
   --r-sm: 12px;
@@ -65,8 +66,10 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.65;
+  letter-spacing: 0.012em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
 img { display: block; max-width: 100%; }
