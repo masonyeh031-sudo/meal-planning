@@ -39,18 +39,20 @@ function FoodGuidePage() {
 
           <div className="myplate-scene" aria-hidden="false">
             {/* LEFT callouts */}
-            <PlateCallout side="left" hue="dairy" badge="奶"
-              tag="每天早晚一杯奶"
-              title="乳品類"
-              note="每天 1.5–2 杯（1 杯 240 毫升）"/>
-            <PlateCallout side="left" hue="fruit" badge="果"
-              tag="每餐水果拳頭大"
-              title="水果類"
-              note="在地當季多樣化"/>
-            <PlateCallout side="left" hue="veg" badge="菜"
-              tag="菜比水果多一點"
-              title="蔬菜類"
-              note="當季且 1/3 選深色"/>
+            <div className="myplate-callouts is-left">
+              <PlateCallout side="left" hue="dairy" badge="奶"
+                tag="每天早晚一杯奶"
+                title="乳品類"
+                note="每天 1.5–2 杯（1 杯 240 毫升）"/>
+              <PlateCallout side="left" hue="fruit" badge="果"
+                tag="每餐水果拳頭大"
+                title="水果類"
+                note="在地當季多樣化"/>
+              <PlateCallout side="left" hue="veg" badge="菜"
+                tag="菜比水果多一點"
+                title="蔬菜類"
+                note="當季且 1/3 選深色"/>
+            </div>
 
             {/* The plate itself */}
             <div className="myplate-stage">
@@ -103,18 +105,20 @@ function FoodGuidePage() {
             </div>
 
             {/* RIGHT callouts */}
-            <PlateCallout side="right" hue="fat" badge="油"
-              tag="堅果種子一茶匙"
-              title="油脂與堅果種子類"
-              note="每餐一茶匙，相當於大拇指第一節大小"/>
-            <PlateCallout side="right" hue="protein" badge="蛋"
-              tag="豆魚蛋肉一掌心"
-              title="豆魚蛋肉類"
-              note="豆 ＞ 魚 ＞ 蛋 ＞ 肉"/>
-            <PlateCallout side="right" hue="grain" badge="穀"
-              tag="飯跟蔬菜一樣多"
-              title="全穀雜糧類"
-              note="至少 1/3 為未精製全穀雜糧"/>
+            <div className="myplate-callouts is-right">
+              <PlateCallout side="right" hue="fat" badge="油"
+                tag="堅果種子一茶匙"
+                title="油脂與堅果種子類"
+                note="每餐一茶匙，相當於大拇指第一節大小"/>
+              <PlateCallout side="right" hue="protein" badge="蛋"
+                tag="豆魚蛋肉一掌心"
+                title="豆魚蛋肉類"
+                note="豆 ＞ 魚 ＞ 蛋 ＞ 肉"/>
+              <PlateCallout side="right" hue="grain" badge="穀"
+                tag="飯跟蔬菜一樣多"
+                title="全穀雜糧類"
+                note="至少 1/3 為未精製全穀雜糧"/>
+            </div>
           </div>
 
           <div className="plate-mottos">

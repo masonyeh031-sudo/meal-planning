@@ -767,8 +767,16 @@ a { color: inherit; text-decoration: none; }
   max-width: 1040px;
   margin: 0 auto;
 }
+.myplate-callouts {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  align-self: center;
+}
+.myplate-callouts.is-right { align-items: stretch; }
 @media (max-width: 980px) {
   .myplate-scene { grid-template-columns: 1fr; gap: 18px; padding: 16px 0 4px; max-width: 460px; }
+  .myplate-callouts { gap: 14px; }
 }
 
 .plate-callout {
