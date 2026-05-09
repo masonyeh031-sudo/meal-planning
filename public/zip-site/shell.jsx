@@ -142,7 +142,9 @@ function BarList({ rows, showStatus = true, targetOnly = false }) {
             <div className="bar-track">
               <div className="bar-target" style={{ width: `${(r.target / max) * 100}%` }}/>
               <div className="bar-fill" style={{ width: `${(r.value / max) * 100}%` }}/>
-              <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true"/>
+              <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true">
+                <span className="bar-target-pin-label">{fmt(r.target)}</span>
+              </div>
             </div>
             <div className="bar-foot">
               {targetOnly ? (
