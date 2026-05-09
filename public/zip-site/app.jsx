@@ -17,6 +17,7 @@ function App() {
   }, [tweaks.theme, tweaks.fontScale]);
 
   const Page = route === "guide" ? FoodGuidePage
+    : route === "eating-out" ? EatingOutPage
     : route === "principles" ? PrinciplesPage
     : route === "records" ? RecordsPage
     : CalculatorPage;

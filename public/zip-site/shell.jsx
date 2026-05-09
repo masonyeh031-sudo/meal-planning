@@ -5,6 +5,7 @@ const { useState, useEffect, useRef, useMemo } = React;
 const PAGES = [
   { id: "calculator", label: "飲食計算器", sub: "Calculator" },
   { id: "guide", label: "六大類食物指南", sub: "Food Guide" },
+  { id: "eating-out", label: "外食怎麼吃", sub: "Eating Out" },
   { id: "principles", label: "計算原理", sub: "Principles" },
   { id: "records", label: "七天飲食紀錄", sub: "Records" },
 ];
