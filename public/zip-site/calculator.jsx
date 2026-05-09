@@ -639,6 +639,7 @@ function CalculatorPage() {
             <div style={{ borderTop: "1px solid var(--line-soft)", paddingTop: 22 }}>
               <BarList
                 showStatus={false}
+                targetOnly={true}
                 rows={FOOD_GROUPS.map((g) => ({
                   id: g.id, label: g.label, short: g.short, hue: g.hue,
                   value: servings[g.id], target: recommendation.recommendedServings[g.id],

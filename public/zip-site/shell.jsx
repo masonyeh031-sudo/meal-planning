@@ -106,7 +106,7 @@ function Donut({ segments, centerValue, centerLabel }) {
 }
 
 // Bar list with target marker + optional status pill.
-function BarList({ rows, showStatus = true }) {
+function BarList({ rows, showStatus = true, targetOnly = false }) {
   const max = Math.max(...rows.map((r) => Math.max(r.value, r.target)), 1);
   return (
     <div className="bar-list">
@@ -145,9 +145,15 @@ function BarList({ rows, showStatus = true }) {
               <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true"/>
             </div>
             <div className="bar-foot">
-              <span>目前 <strong><Counter value={r.value} decimals={Number.isInteger(r.value) ? 0 : 1}/></strong> 份</span>
-              <span className="bar-foot-sep">·</span>
-              <span>建議 <strong><Counter value={r.target} decimals={Number.isInteger(r.target) ? 0 : 1}/></strong> 份</span>
+              {targetOnly ? (
+                <span>建議份數 <strong><Counter value={r.target} decimals={Number.isInteger(r.target) ? 0 : 1}/></strong> 份</span>
+              ) : (
+                <>
+                  <span>目前 <strong><Counter value={r.value} decimals={Number.isInteger(r.value) ? 0 : 1}/></strong> 份</span>
+                  <span className="bar-foot-sep">·</span>
+                  <span>建議 <strong><Counter value={r.target} decimals={Number.isInteger(r.target) ? 0 : 1}/></strong> 份</span>
+                </>
+              )}
             </div>
           </div>
         );
