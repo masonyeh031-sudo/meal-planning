@@ -277,15 +277,25 @@ function CalculatorPage() {
               {EXPORT_ACTIONS.map((a) => {
                 const isMe = exporting === a.id;
                 return (
-                  <button key={a.id} className="export-btn" disabled={!!exporting} onClick={() => handleExport(a.id)}>
-                    {isMe ? <span className="spinner"/> : <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-mute)" }}>{a.icon}</span>}
-                    {isMe ? "匯出中…" : a.label}
+                  <button
+                    key={a.id}
+                    className={"export-btn is-" + a.id + (isMe ? " is-loading" : "")}
+                    disabled={!!exporting}
+                    onClick={() => handleExport(a.id)}
+                  >
+                    {isMe ? <span className="spinner"/> : <span className="export-tag">{a.icon}</span>}
+                    <span className="export-label">{isMe ? "匯出中…" : a.label}</span>
                     {isMe && <span className="progress" style={{ width: `${exportProgress * 100}%` }}/>}
                   </button>
                 );
               })}
             </div>
-            {exportMsg && <p className="export-status">{exportMsg}</p>}
+            {exportMsg && (
+              <div className="export-status">
+                <span className="export-status-tag">下載完成</span>
+                <span className="export-status-file">{exportMsg.replace(/^已下載\s*/, "")}</span>
+              </div>
+            )}
           </article>
 
           {/* Detail table */}
@@ -361,7 +371,7 @@ function StatCard({ label, value, unit, hint, corner, delay, decimals = 0 }) {
   return (
     <article className="stat rise" style={{ "--motion-delay": `${delay}ms` }}>
       <span className="label">{label}</span>
-      <strong className="value">
+      <strong className={"value" + (isNumeric ? "" : " is-text")}>
         <span key={String(value)} className="value-flip">
           {isNumeric ? <Counter value={value} decimals={decimals}/> : value}
         </span>
