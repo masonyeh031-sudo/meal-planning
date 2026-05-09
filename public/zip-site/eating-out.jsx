@@ -380,32 +380,50 @@ function PlateRatioCard() {
       </div>
 
       <div className="eat-plate-body">
-        <div className="eat-plate-visual" aria-hidden="true">
-          <div className="eat-plate-pie">
-            <Donut
-              segments={segs.map((s) => ({ value: s.value, color: s.color }))}
-              centerValue={`${mode.veg}/${mode.protein}/${mode.carb}`}
-              centerLabel="蔬／蛋／碳"
-            />
+        <div
+          className="eat-plate-211"
+          style={{
+            "--veg-cols": `${mode.veg}fr ${mode.protein + mode.carb}fr`,
+            "--side-rows": `${mode.protein}fr ${mode.carb}fr`,
+          }}
+          aria-hidden="true"
+        >
+          <div className="eat-plate-211-cell is-veg" style={{ "--cell-color": "var(--hue-veg)" }}>
+            <div className="cell-fill"/>
+            <div className="cell-text">
+              <span className="cell-emoji">🥦</span>
+              <strong>蔬菜</strong>
+              <span className="cell-pct">{mode.veg}%</span>
+            </div>
           </div>
-          <div className="eat-plate-rect">
-            {segs.map((s) => (
-              <div
-                key={s.key}
-                className="eat-plate-block"
-                style={{ flex: s.value, background: `color-mix(in oklab, ${s.color} 22%, var(--surface))`, borderColor: s.color }}
-              >
-                <span className="eat-plate-block-pct" style={{ color: s.color }}>{s.value}%</span>
-                <span className="eat-plate-block-label">{s.label}</span>
+          <div className="eat-plate-211-side">
+            <div className="eat-plate-211-cell is-protein" style={{ "--cell-color": "var(--hue-protein)" }}>
+              <div className="cell-fill"/>
+              <div className="cell-text">
+                <span className="cell-emoji">🍳</span>
+                <strong>蛋白質</strong>
+                <span className="cell-pct">{mode.protein}%</span>
               </div>
-            ))}
+            </div>
+            <div className="eat-plate-211-cell is-carb" style={{ "--cell-color": "var(--hue-grain)" }}>
+              <div className="cell-fill"/>
+              <div className="cell-text">
+                <span className="cell-emoji">🍚</span>
+                <strong>澱粉</strong>
+                <span className="cell-pct">{mode.carb}%</span>
+              </div>
+            </div>
           </div>
         </div>
+
         <div className="eat-plate-legend">
           {segs.map((s) => (
             <div key={s.key} className="eat-plate-legend-row">
               <span className="eat-plate-legend-dot" style={{ background: s.color }}/>
               <strong>{s.label}</strong>
+              <div className="eat-plate-legend-bar">
+                <div className="eat-plate-legend-fill" style={{ width: `${s.value}%`, background: s.color }}/>
+              </div>
               <span className="eat-plate-legend-pct">{s.value}%</span>
             </div>
           ))}
