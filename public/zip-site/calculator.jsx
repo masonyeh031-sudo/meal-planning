@@ -23,6 +23,365 @@ function loadProfile() {
   return DEFAULT_PROFILE;
 }
 
+// ── Export helpers ────────────────────────────────────────
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function fmtNum(v, d = 1) {
+  if (typeof v !== "number" || Number.isNaN(v)) return "";
+  return Number.isInteger(v) ? v.toString() : v.toFixed(d);
+}
+
+function escapeCsv(s) {
+  const t = String(s ?? "");
+  return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function exportCSV(ctx, filename) {
+  const { profile, recommendation, summary, servings, goalLabel, activityLabel, sexLabel, foodGroups, macros } = ctx;
+  const lines = [];
+  lines.push(["飲食計劃 · Daily Nutrition Report"].map(escapeCsv).join(","));
+  lines.push([`產生時間,${new Date().toLocaleString("zh-Hant")}`]);
+  lines.push("");
+  lines.push("【個人資料】");
+  lines.push(["欄位", "數值"].map(escapeCsv).join(","));
+  lines.push(["身高 cm", profile.heightCm].map(escapeCsv).join(","));
+  lines.push(["體重 kg", profile.weightKg].map(escapeCsv).join(","));
+  lines.push(["年齡", profile.age].map(escapeCsv).join(","));
+  lines.push(["性別", sexLabel].map(escapeCsv).join(","));
+  lines.push(["活動量", activityLabel].map(escapeCsv).join(","));
+  lines.push(["目標", goalLabel].map(escapeCsv).join(","));
+  lines.push("");
+  lines.push("【熱量與三大營養素】");
+  lines.push(["項目", "數值", "單位"].map(escapeCsv).join(","));
+  lines.push(["每日建議熱量", recommendation.targetCalories, "kcal"].map(escapeCsv).join(","));
+  lines.push(["目前份數熱量", Math.round(summary.totalCal), "kcal"].map(escapeCsv).join(","));
+  lines.push(["BMI", recommendation.bmi.toFixed(1), recommendation.bmiStatus].map(escapeCsv).join(","));
+  for (const m of macros) {
+    lines.push([m.label, `${Math.round(m.cal)} kcal`, `${Math.round(m.grams)} g (${m.ratio.toFixed(1)}%)`].map(escapeCsv).join(","));
+  }
+  lines.push("");
+  lines.push("【六大類食物份數】");
+  lines.push(["類別", "目前份數", "建議份數", "差距"].map(escapeCsv).join(","));
+  for (const g of foodGroups) {
+    const cur = servings[g.id];
+    const tgt = recommendation.recommendedServings[g.id];
+    lines.push([g.label, fmtNum(cur), fmtNum(tgt), fmtNum(cur - tgt)].map(escapeCsv).join(","));
+  }
+  const csv = "﻿" + lines.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  triggerDownload(blob, filename);
+  return { filename };
+}
+
+function exportXLS(ctx, filename) {
+  const { profile, recommendation, summary, servings, goalLabel, activityLabel, sexLabel, foodGroups, macros } = ctx;
+  const css = `
+    body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; }
+    h2 { color: #b85a2a; margin: 18px 0 6px; }
+    table { border-collapse: collapse; margin-bottom: 14px; }
+    th, td { border: 1px solid #c8b89c; padding: 6px 14px; }
+    th { background: #f1dfb6; color: #29231a; }
+    .num { text-align: right; font-family: "Consolas", monospace; }
+  `;
+  const rowsProfile = [
+    ["身高 cm", profile.heightCm],
+    ["體重 kg", profile.weightKg],
+    ["年齡", profile.age],
+    ["性別", sexLabel],
+    ["活動量", activityLabel],
+    ["目標", goalLabel],
+  ];
+  const rowsMacro = [
+    ["每日建議熱量", recommendation.targetCalories, "kcal"],
+    ["目前份數熱量", Math.round(summary.totalCal), "kcal"],
+    ["BMI", recommendation.bmi.toFixed(1), recommendation.bmiStatus],
+    ...macros.map((m) => [m.label, `${Math.round(m.cal)} kcal`, `${Math.round(m.grams)} g (${m.ratio.toFixed(1)}%)`]),
+  ];
+  const rowsServings = foodGroups.map((g) => {
+    const cur = servings[g.id];
+    const tgt = recommendation.recommendedServings[g.id];
+    return [g.label, fmtNum(cur), fmtNum(tgt), fmtNum(cur - tgt)];
+  });
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>
+    <h1>飲食計劃 · Daily Nutrition Report</h1>
+    <p>產生時間：${new Date().toLocaleString("zh-Hant")}</p>
+    <h2>個人資料</h2>
+    <table><tr><th>欄位</th><th>數值</th></tr>${rowsProfile.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td></tr>`).join("")}</table>
+    <h2>熱量與三大營養素</h2>
+    <table><tr><th>項目</th><th>數值</th><th>單位</th></tr>${rowsMacro.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td><td>${escapeHtml(r[2] || "")}</td></tr>`).join("")}</table>
+    <h2>六大類食物份數</h2>
+    <table><tr><th>類別</th><th>目前份數</th><th>建議份數</th><th>差距</th></tr>${rowsServings.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td><td class="num">${escapeHtml(r[2])}</td><td class="num">${escapeHtml(r[3])}</td></tr>`).join("")}</table>
+    </body></html>`;
+  const blob = new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  triggerDownload(blob, filename);
+  return { filename };
+}
+
+function exportJPG(ctx, filename) {
+  const { profile, recommendation, summary, servings, goalLabel, activityLabel, sexLabel, foodGroups, macros } = ctx;
+  const W = 1100, H = 1400;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d");
+
+  // Background
+  g.fillStyle = "#fbf6ec";
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = "#f0d4be";
+  g.fillRect(0, 0, W, 12);
+
+  // Title
+  g.fillStyle = "#29231a";
+  g.font = "700 44px 'Noto Serif TC', serif";
+  g.fillText("飲食計劃", 60, 90);
+  g.font = "500 18px 'Noto Sans TC', sans-serif";
+  g.fillStyle = "#6b5e4d";
+  g.fillText("Daily Nutrition Report · " + new Date().toLocaleString("zh-Hant"), 60, 122);
+
+  // Section helper
+  function section(label, y) {
+    g.fillStyle = "#b85a2a";
+    g.font = "700 14px 'Noto Sans TC', sans-serif";
+    g.fillText(label.toUpperCase(), 60, y);
+    g.fillStyle = "#29231a";
+    g.font = "600 22px 'Noto Serif TC', serif";
+    g.fillText(label, 60, y + 26);
+    g.strokeStyle = "#e3d6bb";
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(60, y + 38); g.lineTo(W - 60, y + 38); g.stroke();
+  }
+
+  function statBox(x, y, w, h, label, value, unit, hue) {
+    g.fillStyle = "#ffffff";
+    g.strokeStyle = "#e3d6bb";
+    g.lineWidth = 1;
+    roundRect(g, x, y, w, h, 14, true, true);
+    g.fillStyle = "#9a8b76";
+    g.font = "600 11px 'Noto Sans TC', sans-serif";
+    g.fillText(label, x + 18, y + 28);
+    g.fillStyle = hue || "#29231a";
+    g.font = "700 30px 'Noto Serif TC', serif";
+    g.fillText(value, x + 18, y + 64);
+    if (unit) {
+      g.fillStyle = "#9a8b76";
+      g.font = "500 13px 'Noto Sans TC', sans-serif";
+      const valWidth = g.measureText(value).width;
+      g.fillText(unit, x + 18 + valWidth + 6, y + 64);
+    }
+  }
+
+  // Stat row
+  let y = 170;
+  const boxW = (W - 60 * 2 - 18 * 3) / 4;
+  statBox(60, y, boxW, 100, "每日建議熱量", String(recommendation.targetCalories), "kcal", "#b85a2a");
+  statBox(60 + (boxW + 18) * 1, y, boxW, 100, "目前份數熱量", String(Math.round(summary.totalCal)), "kcal", "#4a6b32");
+  statBox(60 + (boxW + 18) * 2, y, boxW, 100, "BMI", recommendation.bmi.toFixed(1), recommendation.bmiStatus, "#c8923a");
+  statBox(60 + (boxW + 18) * 3, y, boxW, 100, "活動量", activityLabel, profile.age + " 歲", "#8a3d3d");
+
+  // Profile
+  y = 320;
+  section("個人資料", y);
+  y += 64;
+  const profItems = [
+    ["身高", profile.heightCm + " cm"], ["體重", profile.weightKg + " kg"],
+    ["年齡", profile.age + " 歲"], ["性別", sexLabel],
+    ["活動量", activityLabel], ["目標", goalLabel],
+  ];
+  g.font = "500 16px 'Noto Sans TC', sans-serif";
+  profItems.forEach((p, i) => {
+    const px = 60 + (i % 3) * 340;
+    const py = y + Math.floor(i / 3) * 36;
+    g.fillStyle = "#9a8b76"; g.fillText(p[0], px, py);
+    g.fillStyle = "#29231a"; g.font = "600 16px 'Noto Serif TC', serif"; g.fillText(p[1], px + 70, py);
+    g.font = "500 16px 'Noto Sans TC', sans-serif";
+  });
+
+  // Macros
+  y += 100;
+  section("三大營養素", y);
+  y += 60;
+  const macroColors = ["#c8923a", "#b85a2a", "#4a6b32"];
+  macros.forEach((m, i) => {
+    const mx = 60 + i * ((W - 60 * 2 - 18 * 2) / 3 + 18);
+    const mw = (W - 60 * 2 - 18 * 2) / 3;
+    g.fillStyle = "#ffffff"; g.strokeStyle = "#e3d6bb"; g.lineWidth = 1;
+    roundRect(g, mx, y, mw, 110, 14, true, true);
+    g.fillStyle = macroColors[i];
+    g.fillRect(mx, y, 4, 110);
+    g.fillStyle = "#29231a";
+    g.font = "600 16px 'Noto Sans TC', sans-serif";
+    g.fillText(m.label, mx + 18, y + 30);
+    g.fillStyle = macroColors[i];
+    g.font = "700 30px 'Noto Serif TC', serif";
+    g.fillText(Math.round(m.grams) + " g", mx + 18, y + 70);
+    g.fillStyle = "#6b5e4d";
+    g.font = "500 13px 'Noto Sans TC', sans-serif";
+    g.fillText(`${Math.round(m.cal)} kcal · ${m.ratio.toFixed(1)}%`, mx + 18, y + 95);
+  });
+
+  // Food groups
+  y += 150;
+  section("六大類食物份數", y);
+  y += 60;
+  foodGroups.forEach((fg, i) => {
+    const cur = servings[fg.id];
+    const tgt = recommendation.recommendedServings[fg.id];
+    const fy = y + i * 56;
+    const max = Math.max(cur, tgt, 1);
+    g.fillStyle = "#29231a"; g.font = "600 16px 'Noto Sans TC', sans-serif";
+    g.fillText(fg.label, 60, fy + 18);
+    g.fillStyle = "#6b5e4d"; g.font = "500 13px 'Noto Sans TC', sans-serif";
+    g.fillText(`目前 ${fmtNum(cur)} 份 · 建議 ${fmtNum(tgt)} 份`, 60, fy + 40);
+
+    const trackX = 380, trackW = W - 60 - trackX, trackH = 14, trackY = fy + 14;
+    g.fillStyle = "rgba(0,0,0,0.06)";
+    roundRect(g, trackX, trackY, trackW, trackH, 7, true, false);
+    g.fillStyle = "rgba(184,90,42,0.18)";
+    roundRect(g, trackX, trackY, (tgt / max) * trackW, trackH, 7, true, false);
+    const grad = g.createLinearGradient(trackX, 0, trackX + trackW, 0);
+    grad.addColorStop(0, "#f1dfb6"); grad.addColorStop(1, "#b85a2a");
+    g.fillStyle = grad;
+    roundRect(g, trackX, trackY, (cur / max) * trackW, trackH, 7, true, false);
+  });
+
+  // Footer
+  g.fillStyle = "#9a8b76";
+  g.font = "500 12px 'Noto Sans TC', sans-serif";
+  g.fillText("此報表為估算值，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。", 60, H - 40);
+
+  return new Promise((resolve, reject) => {
+    c.toBlob((blob) => {
+      if (!blob) { reject(new Error("無法產生 JPG")); return; }
+      triggerDownload(blob, filename);
+      resolve({ filename });
+    }, "image/jpeg", 0.92);
+  });
+}
+
+function roundRect(g, x, y, w, h, r, fill, stroke) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+  if (fill) g.fill();
+  if (stroke) g.stroke();
+}
+
+function exportPDF(ctx, filename) {
+  const { profile, recommendation, summary, servings, goalLabel, activityLabel, sexLabel, foodGroups, macros } = ctx;
+  const win = window.open("", "_blank");
+  if (!win) {
+    throw new Error("瀏覽器封鎖了新視窗，請允許彈出視窗或改用 JPG / CSV / Excel 匯出。");
+  }
+
+  const macroRows = macros.map((m) => `
+    <tr><td>${escapeHtml(m.label)}</td>
+        <td class="num">${Math.round(m.cal)} kcal</td>
+        <td class="num">${Math.round(m.grams)} g</td>
+        <td class="num">${m.ratio.toFixed(1)}%</td></tr>`).join("");
+  const groupRows = foodGroups.map((g) => {
+    const cur = servings[g.id];
+    const tgt = recommendation.recommendedServings[g.id];
+    return `<tr><td>${escapeHtml(g.label)}</td>
+            <td class="num">${escapeHtml(fmtNum(cur))}</td>
+            <td class="num">${escapeHtml(fmtNum(tgt))}</td>
+            <td class="num">${escapeHtml(fmtNum(cur - tgt))}</td></tr>`;
+  }).join("");
+
+  const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+    <title>${escapeHtml(filename)}</title>
+    <style>
+      @page { size: A4; margin: 18mm 16mm; }
+      * { box-sizing: border-box; }
+      body { font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; color: #29231a; margin: 0; }
+      h1 { font-family: "Noto Serif TC", serif; font-size: 28px; margin: 0 0 4px; color: #29231a; }
+      h2 { font-family: "Noto Serif TC", serif; font-size: 17px; margin: 22px 0 8px; color: #b85a2a; border-bottom: 1px solid #e3d6bb; padding-bottom: 4px; }
+      .meta { color: #6b5e4d; font-size: 12px; margin-bottom: 16px; }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+      .stat { background: #fbf6ec; border: 1px solid #e3d6bb; border-radius: 10px; padding: 12px 14px; }
+      .stat .label { color: #9a8b76; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+      .stat .value { font-family: "Noto Serif TC", serif; font-size: 22px; font-weight: 700; margin-top: 6px; }
+      .stat .unit { color: #6b5e4d; font-size: 11px; margin-left: 4px; }
+      table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      th, td { padding: 7px 10px; border-bottom: 1px solid #ece2cb; text-align: left; }
+      th { background: #f3ead6; color: #29231a; font-weight: 600; }
+      td.num, th.num { text-align: right; font-family: "Consolas", monospace; }
+      .footer { margin-top: 24px; color: #9a8b76; font-size: 11px; line-height: 1.6; }
+      .actions { margin: 16px 0 8px; padding: 10px 12px; background: #faf3df; border: 1px dashed #c8b89c; border-radius: 8px; font-size: 12px; color: #6b5e4d; }
+      @media print { .actions { display: none; } }
+    </style>
+  </head><body>
+    <div class="actions">
+      系統會自動開啟列印對話框 — 在「目的地」選「儲存為 PDF」即可下載。如未自動跳出，可按 Cmd / Ctrl + P。
+    </div>
+    <h1>飲食計劃 · Daily Nutrition Report</h1>
+    <p class="meta">產生時間：${new Date().toLocaleString("zh-Hant")}</p>
+
+    <div class="stats">
+      <div class="stat"><div class="label">每日建議熱量</div><div class="value">${recommendation.targetCalories}<span class="unit">kcal</span></div></div>
+      <div class="stat"><div class="label">目前份數熱量</div><div class="value">${Math.round(summary.totalCal)}<span class="unit">kcal</span></div></div>
+      <div class="stat"><div class="label">BMI</div><div class="value">${recommendation.bmi.toFixed(1)}<span class="unit">${escapeHtml(recommendation.bmiStatus)}</span></div></div>
+      <div class="stat"><div class="label">活動量 / 年齡</div><div class="value" style="font-size:18px;">${escapeHtml(activityLabel)}<span class="unit">${profile.age} 歲</span></div></div>
+    </div>
+
+    <h2>個人資料</h2>
+    <table>
+      <tr><th>身高</th><td>${profile.heightCm} cm</td><th>體重</th><td>${profile.weightKg} kg</td></tr>
+      <tr><th>年齡</th><td>${profile.age} 歲</td><th>性別</th><td>${escapeHtml(sexLabel)}</td></tr>
+      <tr><th>活動量</th><td>${escapeHtml(activityLabel)}</td><th>目標</th><td>${escapeHtml(goalLabel)}</td></tr>
+    </table>
+
+    <h2>三大營養素</h2>
+    <table>
+      <thead><tr><th>類別</th><th class="num">熱量</th><th class="num">克數</th><th class="num">比例</th></tr></thead>
+      <tbody>${macroRows}</tbody>
+    </table>
+
+    <h2>六大類食物份數</h2>
+    <table>
+      <thead><tr><th>類別</th><th class="num">目前份數</th><th class="num">建議份數</th><th class="num">差距</th></tr></thead>
+      <tbody>${groupRows}</tbody>
+    </table>
+
+    <p class="footer">此報表為簡化版估算，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。</p>
+    <script>
+      window.addEventListener("load", () => {
+        document.title = ${JSON.stringify(filename.replace(/\.pdf$/, ""))};
+        setTimeout(() => window.print(), 250);
+      });
+    </script>
+  </body></html>`;
+
+  win.document.open(); win.document.write(html); win.document.close();
+  return { filename, note: "請在列印對話框選「儲存為 PDF」" };
+}
+
+function runExport(id, ctx, filename) {
+  if (id === "csv") return exportCSV(ctx, filename);
+  if (id === "xls") return exportXLS(ctx, filename);
+  if (id === "jpg") return exportJPG(ctx, filename);
+  if (id === "pdf") return exportPDF(ctx, filename);
+  throw new Error("未知格式：" + id);
+}
+
 function CalculatorPage() {
   const [profile, setProfile] = React.useState(loadProfile);
   const [servings, setServings] = React.useState(() => buildRecommendation(loadProfile()).recommendedServings);
@@ -64,18 +423,44 @@ function CalculatorPage() {
   function handleExport(id) {
     if (exporting) return;
     setExporting(id); setExportProgress(0); setExportMsg(null);
+
+    const ctx = {
+      profile, servings,
+      recommendation, summary,
+      goalLabel, activityLabel,
+      sexLabel: SEX_OPTIONS.find((s) => s.value === profile.sex)?.label || "—",
+      foodGroups: FOOD_GROUPS,
+      macros,
+    };
+
+    const filename = `飲食計劃-${new Date().toISOString().slice(0, 10)}.${id === "jpg" ? "jpg" : id === "xls" ? "xls" : id}`;
     const start = performance.now();
-    const total = 1500 + Math.random() * 600;
-    const step = () => {
+    const total = 700 + Math.random() * 300;
+
+    const tick = () => {
       const p = Math.min(1, (performance.now() - start) / total);
       setExportProgress(p);
-      if (p < 1) requestAnimationFrame(step);
-      else {
-        setExporting(null);
-        setExportMsg(`已下載 飲食計劃-${new Date().toISOString().slice(0, 10)}.${id === "csv" ? "csv" : id === "xls" ? "xls" : id}`);
+      if (p < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        Promise.resolve()
+          .then(() => runExport(id, ctx, filename))
+          .then((info) => {
+            setExporting(null);
+            setExportMsg({
+              ok: true,
+              filename: info?.filename || filename,
+              note: info?.note || "",
+            });
+          })
+          .catch((err) => {
+            console.error(err);
+            setExporting(null);
+            setExportMsg({ ok: false, filename: filename, note: err?.message || "匯出失敗，請再試一次" });
+          });
       }
     };
-    requestAnimationFrame(step);
+    requestAnimationFrame(tick);
   }
 
   return (
@@ -291,9 +676,12 @@ function CalculatorPage() {
               })}
             </div>
             {exportMsg && (
-              <div className="export-status">
-                <span className="export-status-tag">下載完成</span>
-                <span className="export-status-file">{exportMsg.replace(/^已下載\s*/, "")}</span>
+              <div className={"export-status" + (exportMsg.ok ? "" : " is-error")}>
+                <span className="export-status-tag">
+                  {exportMsg.ok ? "下載完成" : "匯出失敗"}
+                </span>
+                <span className="export-status-file">{exportMsg.filename}</span>
+                {exportMsg.note && <span className="export-status-note">{exportMsg.note}</span>}
               </div>
             )}
           </article>
