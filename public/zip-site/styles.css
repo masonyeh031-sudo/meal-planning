@@ -1540,6 +1540,49 @@ a { color: inherit; text-decoration: none; }
 .tweak-only { display: none; }
 [data-tweaks-on="true"] .tweak-only { display: initial; }
 
+/* ── Records page · 達標任務 pill + empty charts ──────── */
+.records-quest {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 14px 8px 12px; border-radius: 999px;
+  background: color-mix(in oklab, var(--sun-soft) 50%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--sun) 35%, transparent);
+  font-family: var(--serif); font-size: 13px;
+  color: var(--ink);
+  transition: all 0.3s ease;
+}
+.records-quest.is-done {
+  background: color-mix(in oklab, var(--moss-soft) 60%, var(--surface));
+  border-color: color-mix(in oklab, var(--moss) 40%, transparent);
+  animation: pill-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.records-quest.is-empty {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink-mute);
+  font-size: 12.5px;
+}
+.records-quest-icon { font-size: 18px; line-height: 1; }
+.records-quest-body { display: flex; flex-direction: column; gap: 1px; }
+.records-quest-body strong {
+  font-size: 11.5px; letter-spacing: 0.06em; font-weight: 700;
+  color: var(--ink);
+}
+.records-quest.is-done .records-quest-body strong { color: var(--moss); }
+.records-quest-body span { font-size: 12px; color: var(--ink-soft); font-family: var(--mono); }
+
+.records-empty-charts {
+  display: grid; place-items: center; gap: 10px;
+  padding: 36px 16px;
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-family: var(--serif);
+}
+.records-empty-emoji { font-size: 32px; line-height: 1; }
+.records-empty-charts p { margin: 0; }
+
 /* ── Eating Out page ───────────────────────────────────── */
 .eat-hero-tags {
   display: flex; flex-wrap: wrap; gap: 8px;

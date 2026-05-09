@@ -105,8 +105,8 @@ function Donut({ segments, centerValue, centerLabel }) {
   );
 }
 
-// Bar list with target marker + status pill.
-function BarList({ rows }) {
+// Bar list with target marker + optional status pill.
+function BarList({ rows, showStatus = true }) {
   const max = Math.max(...rows.map((r) => Math.max(r.value, r.target)), 1);
   return (
     <div className="bar-list">
@@ -137,7 +137,7 @@ function BarList({ rows }) {
                 {r.short && <span className="bar-badge">{r.short}</span>}
                 <strong>{r.label}</strong>
               </span>
-              <span className={"bar-status is-" + status}>{statusNode}</span>
+              {showStatus && <span className={"bar-status is-" + status}>{statusNode}</span>}
             </div>
             <div className="bar-track">
               <div className="bar-target" style={{ width: `${(r.target / max) * 100}%` }}/>

@@ -1,6 +1,7 @@
 // 7-day diet records page — log meals across a week, track totals vs target.
 
-const { DAYS, MEALS, FOOD_GROUPS: FG3, todayDate, GOAL_OPTIONS: GO3, recommendedCalories: rc3 } = window;
+const { DAYS, MEALS, FOOD_GROUPS: FG3, todayDate, GOAL_OPTIONS: GO3, recommendedCalories: rc3,
+  nutritionFromServings: nfs3, buildRecommendation: br3 } = window;
 
 const CAT_OPTIONS = FG3.map((g) => ({ id: g.id, label: g.label, short: g.short, hue: g.hue }));
 
@@ -72,6 +73,30 @@ function RecordsPage() {
   const dayCal = dayTotal(day);
   const weekCal = week.reduce((a, d) => a + dayTotal(d), 0);
   const filledDays = week.filter((d) => Object.values(d.meals).flat().length > 0).length;
+
+  // Compute today's actual servings (sum amount per category) + nutrition.
+  const dayServings = React.useMemo(() => {
+    const s = {};
+    for (const g of FG3) s[g.id] = 0;
+    for (const e of Object.values(day.meals).flat()) {
+      const amt = Number(e.amount) || 0;
+      if (s[e.category] === undefined) continue;
+      s[e.category] += amt;
+    }
+    return s;
+  }, [day]);
+  const daySummary = React.useMemo(() => nfs3(dayServings), [dayServings]);
+  const dayRec = React.useMemo(() => profile ? br3(profile) : null, [profile]);
+  const dayMacros = [
+    { id: "cho", label: "CHO 碳水", grams: daySummary.totals.cho, cal: daySummary.macroCal.cho, ratio: daySummary.ratios.cho },
+    { id: "pro", label: "PRO 蛋白", grams: daySummary.totals.pro, cal: daySummary.macroCal.pro, ratio: daySummary.ratios.pro },
+    { id: "fat", label: "FAT 脂肪", grams: daySummary.totals.fat, cal: daySummary.macroCal.fat, ratio: daySummary.ratios.fat },
+  ];
+  const dayMacroColors = { cho: "var(--hue-grain)", pro: "var(--hue-protein)", fat: "var(--hue-veg)" };
+  const totalEntriesToday = Object.values(day.meals).flat().length;
+  const reachedCount = dayRec
+    ? FG3.filter((g) => Math.abs(dayServings[g.id] - dayRec.recommendedServings[g.id]) < 0.5).length
+    : 0;
 
   function setDraft(key, patch) { setDrafts((d) => ({ ...d, [key]: { ...d[key], ...patch } })); }
   function addEntry(mealId) {
@@ -153,6 +178,69 @@ function RecordsPage() {
             <span className="corner-mark">∑</span>
           </article>
         </div>
+
+        {/* Macros + serving progress vs target */}
+        <article className="card rise" style={{ "--motion-delay": "260ms" }}>
+          <div className="card-head">
+            <div>
+              <span className="eyebrow">圖表　·　Charts</span>
+              <h2>三大營養素 與 各類份數</h2>
+            </div>
+            {dayRec ? (
+              <span className={"records-quest " + (reachedCount === FG3.length ? "is-done" : "")}>
+                <span className="records-quest-icon" aria-hidden="true">{reachedCount === FG3.length ? "🎉" : "🎯"}</span>
+                <span className="records-quest-body">
+                  <strong>達標任務</strong>
+                  <span><Counter value={reachedCount}/> / {FG3.length} 類達標</span>
+                </span>
+              </span>
+            ) : (
+              <span className="records-quest is-empty">先在計算器頁設定建議值</span>
+            )}
+          </div>
+
+          <p className="note" style={{ marginTop: -6, marginBottom: 16 }}>
+            根據今天輸入的飲食內容，自動加總三大營養素與六大類食物份數，並對照計算器頁面的建議值。
+          </p>
+
+          {totalEntriesToday === 0 ? (
+            <div className="records-empty-charts">
+              <span className="records-empty-emoji" aria-hidden="true">🍽️</span>
+              <p>今天還沒記錄任何飲食，先到下方加入一筆吧。</p>
+            </div>
+          ) : (
+            <>
+              <div className="donut-wrap" style={{ marginBottom: 24 }}>
+                <Donut
+                  segments={dayMacros.map((m) => ({ value: m.cal, color: dayMacroColors[m.id] }))}
+                  centerValue={<Counter value={Math.round(daySummary.totalCal)}/>}
+                  centerLabel="kcal"
+                />
+                <div className="legend">
+                  {dayMacros.map((m) => (
+                    <div key={m.id} className="legend-row">
+                      <span className="swatch" style={{ background: dayMacroColors[m.id] }}/>
+                      <span className="name">{m.label}<small><Counter value={Math.round(m.cal)}/> kcal · <Counter value={Math.round(m.grams)}/> g</small></span>
+                      <span className="pct"><Counter value={m.ratio} decimals={1}/>%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {dayRec && (
+                <div style={{ borderTop: "1px solid var(--line-soft)", paddingTop: 22 }}>
+                  <BarList
+                    showStatus={true}
+                    rows={FG3.map((g) => ({
+                      id: g.id, label: g.label, short: g.short, hue: g.hue,
+                      value: dayServings[g.id], target: dayRec.recommendedServings[g.id],
+                      color: `var(--hue-${g.hue})`,
+                    }))}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </article>
 
         {/* Meal cards */}
         <div className="meal-grid">
