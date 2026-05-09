@@ -744,6 +744,10 @@ a { color: inherit; text-decoration: none; }
   transition: left 0.4s ease;
   pointer-events: none;
 }
+.bar-target-pin.is-line {
+  top: -2px; bottom: -2px; width: 2px;
+  background: color-mix(in oklab, var(--hue, var(--ink)) 38%, transparent);
+}
 .bar-target-pin-label {
   position: absolute; left: 50%; top: -24px;
   transform: translateX(-50%);
@@ -756,6 +760,36 @@ a { color: inherit; text-decoration: none; }
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(64, 44, 16, 0.06);
+}
+
+/* Records mode — chip rides along with the fill end */
+.bar-current-pin {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  transition: left 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+}
+.bar-current-pin-label {
+  position: absolute; left: 0; top: -24px;
+  transform: translate(-50%, 0);
+  padding: 3px 9px; border-radius: 6px;
+  background: var(--hue, var(--ink));
+  color: var(--bg);
+  font-family: var(--serif); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px -4px color-mix(in oklab, var(--hue, var(--ink)) 70%, transparent);
+}
+.bar-current-pin-label::after {
+  content: ""; position: absolute;
+  left: 50%; bottom: -4px; transform: translateX(-50%) rotate(45deg);
+  width: 6px; height: 6px;
+  background: var(--hue, var(--ink));
+}
+.bar-current-pin-unit {
+  margin-left: 4px;
+  font-weight: 500; opacity: 0.75;
+  font-size: 10.5px;
 }
 
 .bar-foot {
@@ -1499,7 +1533,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .entry-form {
-  display: grid; gap: 8px; grid-template-columns: 2fr 1fr 1.4fr 1fr auto;
+  display: grid; gap: 8px; grid-template-columns: 2fr 1.2fr 1fr auto;
 }
 @media (max-width: 720px) { .entry-form { grid-template-columns: 1fr 1fr; } .entry-form .name-input { grid-column: 1 / -1; } .entry-form .add-btn { grid-column: 1 / -1; } }
 .entry-form .input { padding: 9px 12px; font-size: 13.5px; }

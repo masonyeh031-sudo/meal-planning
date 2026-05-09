@@ -58,7 +58,7 @@ function RecordsPage() {
   const [active, setActive] = React.useState(0);
   const [drafts, setDrafts] = React.useState(() => {
     const d = {};
-    for (let i = 0; i < 7; i++) for (const m of MEALS) d[`${i}:${m.id}`] = { name: "", category: "grains", amount: "", cal: "" };
+    for (let i = 0; i < 7; i++) for (const m of MEALS) d[`${i}:${m.id}`] = { name: "", category: "grains", amount: "" };
     return d;
   });
 
@@ -104,13 +104,13 @@ function RecordsPage() {
     const dr = drafts[key];
     if (!dr.name.trim()) return;
     const amount = Number(dr.amount) || 1;
-    const cal = dr.cal !== "" ? Number(dr.cal) : Math.round((CAT_CAL_PER_SERVING[dr.category] || 50) * amount);
+    const cal = Math.round((CAT_CAL_PER_SERVING[dr.category] || 50) * amount);
     setWeek((w) => {
       const nw = [...w];
       nw[active] = { ...nw[active], meals: { ...nw[active].meals, [mealId]: [...nw[active].meals[mealId], { id: uid(), name: dr.name.trim(), category: dr.category, amount, cal }] } };
       return nw;
     });
-    setDraft(key, { name: "", amount: "", cal: "" });
+    setDraft(key, { name: "", amount: "" });
   }
   function removeEntry(mealId, id) {
     setWeek((w) => {
@@ -248,12 +248,12 @@ function RecordsPage() {
             const entries = day.meals[m.id];
             const draftKey = `${active}:${m.id}`;
             const draft = drafts[draftKey];
-            const mealCal = entries.reduce((a, e) => a + e.cal, 0);
+            const mealServings = entries.reduce((a, e) => a + (Number(e.amount) || 0), 0);
             return (
               <article key={m.id} className="meal-card rise" style={{ "--motion-delay": `${i * 60}ms` }}>
                 <div className="meal-head">
                   <h3><span className="icon">{m.icon}</span>{m.label}</h3>
-                  <span className="meal-cal">{mealCal} kcal · {entries.length} 項</span>
+                  <span className="meal-cal">{fmt(mealServings)} 份 · {entries.length} 項</span>
                 </div>
 
                 {entries.length === 0 ? (
@@ -265,8 +265,8 @@ function RecordsPage() {
                       return (
                         <div key={e.id} className="entry-row">
                           <div className="cat-dot" style={hueVars(cat?.hue || "grain")}>{cat?.short || "·"}</div>
-                          <span className="name">{e.name}<span className="amount">{e.amount} 份</span></span>
-                          <span className="cal">{e.cal} kcal</span>
+                          <span className="name">{e.name}</span>
+                          <span className="cal">{e.amount} 份</span>
                           <button className="delete-btn" onClick={() => removeEntry(m.id, e.id)} aria-label="刪除">
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
                           </button>
@@ -284,9 +284,8 @@ function RecordsPage() {
                     {CAT_OPTIONS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                   <input className="input" placeholder="份數" type="number" step="0.5" value={draft.amount}
-                    onChange={(e) => setDraft(draftKey, { amount: e.target.value })}/>
-                  <input className="input" placeholder="kcal" type="number" value={draft.cal}
-                    onChange={(e) => setDraft(draftKey, { cal: e.target.value })}/>
+                    onChange={(e) => setDraft(draftKey, { amount: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter") addEntry(m.id); }}/>
                   <button className="btn primary add-btn" onClick={() => addEntry(m.id)}>新增</button>
                 </div>
               </article>

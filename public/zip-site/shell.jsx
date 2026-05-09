@@ -142,9 +142,21 @@ function BarList({ rows, showStatus = true, targetOnly = false }) {
             <div className="bar-track">
               <div className="bar-target" style={{ width: `${(r.target / max) * 100}%` }}/>
               <div className="bar-fill" style={{ width: `${(r.value / max) * 100}%` }}/>
-              <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true">
-                <span className="bar-target-pin-label">建議份數 {fmt(r.target)}</span>
-              </div>
+              {targetOnly ? (
+                <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true">
+                  <span className="bar-target-pin-label">建議份數 {fmt(r.target)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="bar-target-pin is-line" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true"/>
+                  <div className="bar-current-pin" style={{ left: `${(r.value / max) * 100}%` }} aria-hidden="true">
+                    <span className="bar-current-pin-label">
+                      <Counter value={r.value} decimals={Number.isInteger(r.value) ? 0 : 1}/>
+                      <span className="bar-current-pin-unit">/{fmt(r.target)} 份</span>
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
             <div className="bar-foot">
               {targetOnly ? (
