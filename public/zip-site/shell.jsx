@@ -105,23 +105,45 @@ function Donut({ segments, centerValue, centerLabel }) {
   );
 }
 
-// Bar list with target marker.
+// Bar list with target marker + status pill.
 function BarList({ rows }) {
   const max = Math.max(...rows.map((r) => Math.max(r.value, r.target)), 1);
   return (
     <div className="bar-list">
-      {rows.map((r, i) => (
-        <div key={r.id} className="bar-row rise" style={{ "--motion-delay": `${i * 50}ms` }}>
-          <div className="bar-meta">
-            <strong>{r.label}</strong>
-            <span>目前 {fmt(r.value)} 份 · 建議 {fmt(r.target)} 份</span>
+      {rows.map((r, i) => {
+        const diff = +(r.value - r.target).toFixed(1);
+        const status = r.target > 0 && Math.abs(diff) >= 0.5
+          ? (diff > 0 ? "over" : "under")
+          : "ok";
+        const statusText = status === "ok"
+          ? "✓ 達標"
+          : status === "over" ? `多 ${fmt(Math.abs(diff))} 份` : `差 ${fmt(Math.abs(diff))} 份`;
+        return (
+          <div
+            key={r.id}
+            className="bar-row rise"
+            style={{ "--motion-delay": `${i * 50}ms`, "--hue": r.color, ...(r.hue ? hueVars(r.hue) : {}) }}
+          >
+            <div className="bar-meta">
+              <span className="bar-label">
+                {r.short && <span className="bar-badge">{r.short}</span>}
+                <strong>{r.label}</strong>
+              </span>
+              <span className={"bar-status is-" + status}>{statusText}</span>
+            </div>
+            <div className="bar-track">
+              <div className="bar-target" style={{ width: `${(r.target / max) * 100}%` }}/>
+              <div className="bar-fill" style={{ width: `${(r.value / max) * 100}%` }}/>
+              <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true"/>
+            </div>
+            <div className="bar-foot">
+              <span>目前 <strong>{fmt(r.value)}</strong> 份</span>
+              <span className="bar-foot-sep">·</span>
+              <span>建議 <strong>{fmt(r.target)}</strong> 份</span>
+            </div>
           </div>
-          <div className="bar-track">
-            <div className="bar-target" style={{ width: `${(r.target / max) * 100}%` }}/>
-            <div className="bar-fill" style={{ width: `${(r.value / max) * 100}%`, "--hue": r.color }}/>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
