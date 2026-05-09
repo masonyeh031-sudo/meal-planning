@@ -393,7 +393,7 @@ function PlateRatioCard() {
             <div className="cell-text">
               <span className="cell-emoji">🥦</span>
               <strong>蔬菜</strong>
-              <span className="cell-pct">{mode.veg}%</span>
+              <span className="cell-pct"><Counter value={mode.veg}/>%</span>
             </div>
           </div>
           <div className="eat-plate-211-side">
@@ -402,7 +402,7 @@ function PlateRatioCard() {
               <div className="cell-text">
                 <span className="cell-emoji">🍳</span>
                 <strong>蛋白質</strong>
-                <span className="cell-pct">{mode.protein}%</span>
+                <span className="cell-pct"><Counter value={mode.protein}/>%</span>
               </div>
             </div>
             <div className="eat-plate-211-cell is-carb" style={{ "--cell-color": "var(--hue-grain)" }}>
@@ -410,7 +410,7 @@ function PlateRatioCard() {
               <div className="cell-text">
                 <span className="cell-emoji">🍚</span>
                 <strong>澱粉</strong>
-                <span className="cell-pct">{mode.carb}%</span>
+                <span className="cell-pct"><Counter value={mode.carb}/>%</span>
               </div>
             </div>
           </div>
@@ -424,7 +424,7 @@ function PlateRatioCard() {
               <div className="eat-plate-legend-bar">
                 <div className="eat-plate-legend-fill" style={{ width: `${s.value}%`, background: s.color }}/>
               </div>
-              <span className="eat-plate-legend-pct">{s.value}%</span>
+              <span className="eat-plate-legend-pct"><Counter value={s.value}/>%</span>
             </div>
           ))}
           <p className="eat-plate-note">{mode.note}</p>

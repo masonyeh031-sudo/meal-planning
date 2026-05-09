@@ -115,9 +115,17 @@ function BarList({ rows }) {
         const status = r.target > 0 && Math.abs(diff) >= 0.5
           ? (diff > 0 ? "over" : "under")
           : "ok";
-        const statusText = status === "ok"
+        const absDiff = Math.abs(diff);
+        const statusDecimals = Number.isInteger(absDiff) ? 0 : 1;
+        const statusNode = status === "ok"
           ? "✓ 達標"
-          : status === "over" ? `多 ${fmt(Math.abs(diff))} 份` : `差 ${fmt(Math.abs(diff))} 份`;
+          : (
+            <>
+              {status === "over" ? "多 " : "差 "}
+              <Counter value={absDiff} decimals={statusDecimals}/>
+              {" 份"}
+            </>
+          );
         return (
           <div
             key={r.id}
@@ -129,7 +137,7 @@ function BarList({ rows }) {
                 {r.short && <span className="bar-badge">{r.short}</span>}
                 <strong>{r.label}</strong>
               </span>
-              <span className={"bar-status is-" + status}>{statusText}</span>
+              <span className={"bar-status is-" + status}>{statusNode}</span>
             </div>
             <div className="bar-track">
               <div className="bar-target" style={{ width: `${(r.target / max) * 100}%` }}/>
@@ -137,9 +145,9 @@ function BarList({ rows }) {
               <div className="bar-target-pin" style={{ left: `${(r.target / max) * 100}%` }} aria-hidden="true"/>
             </div>
             <div className="bar-foot">
-              <span>目前 <strong>{fmt(r.value)}</strong> 份</span>
+              <span>目前 <strong><Counter value={r.value} decimals={Number.isInteger(r.value) ? 0 : 1}/></strong> 份</span>
               <span className="bar-foot-sep">·</span>
-              <span>建議 <strong>{fmt(r.target)}</strong> 份</span>
+              <span>建議 <strong><Counter value={r.target} decimals={Number.isInteger(r.target) ? 0 : 1}/></strong> 份</span>
             </div>
           </div>
         );
@@ -148,10 +156,10 @@ function BarList({ rows }) {
   );
 }
 
-// Animated counter.
-function Counter({ value, decimals = 0, duration = 350 }) {
-  const [display, setDisplay] = useState(value);
-  const ref = useRef({ from: value, to: value, start: 0 });
+// Animated counter — animates from 0 on mount, then between values on updates.
+function Counter({ value, decimals = 0, duration = 600, mountFrom = 0 }) {
+  const [display, setDisplay] = useState(mountFrom);
+  const ref = useRef({ from: mountFrom, to: value, start: 0 });
   useEffect(() => {
     ref.current.from = display;
     ref.current.to = value;

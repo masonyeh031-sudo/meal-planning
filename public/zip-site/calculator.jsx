@@ -151,7 +151,7 @@ function CalculatorPage() {
                 ? "與建議值接近"
                 : (calorieDelta > 0 ? `高於建議 ${Math.round(calorieDelta)} kcal` : `低於建議 ${Math.round(Math.abs(calorieDelta))} kcal`)}
               corner="02" delay={140}/>
-            <StatCard label="BMI" value={recommendation.bmi.toFixed(1)} unit={recommendation.bmiStatus}
+            <StatCard label="BMI" value={recommendation.bmi} decimals={1} unit={recommendation.bmiStatus}
               hint="由身高、體重估算" corner="03" delay={200}/>
             <StatCard label="份數分配基準" value={activityLabel} unit={`${profile.age} 歲`}
               hint="活動量、年齡會微調分配" corner="04" delay={260}/>
@@ -238,15 +238,15 @@ function CalculatorPage() {
             <div className="donut-wrap" style={{ marginBottom: 28 }}>
               <Donut
                 segments={macros.map((m) => ({ value: m.cal, color: macroColors[m.id] }))}
-                centerValue={Math.round(summary.totalCal)}
+                centerValue={<Counter value={Math.round(summary.totalCal)}/>}
                 centerLabel="kcal"
               />
               <div className="legend">
                 {macros.map((m) => (
                   <div key={m.id} className="legend-row">
                     <span className="swatch" style={{ background: macroColors[m.id] }}/>
-                    <span className="name">{m.label}<small>{Math.round(m.cal)} kcal · {Math.round(m.grams)} g</small></span>
-                    <span className="pct">{m.ratio.toFixed(1)}%</span>
+                    <span className="name">{m.label}<small><Counter value={Math.round(m.cal)}/> kcal · <Counter value={Math.round(m.grams)}/> g</small></span>
+                    <span className="pct"><Counter value={m.ratio} decimals={1}/>%</span>
                   </div>
                 ))}
               </div>
@@ -337,12 +337,12 @@ function CalculatorPage() {
                 <tfoot>
                   <tr>
                     <td>總計</td>
-                    <td className="num">{fmt(FOOD_GROUPS.reduce((a, g) => a + servings[g.id], 0))}</td>
+                    <td className="num"><Counter value={FOOD_GROUPS.reduce((a, g) => a + servings[g.id], 0)} decimals={1}/></td>
                     <td/><td/><td/>
-                    <td className="num">{Math.round(summary.totals.cho)} g</td>
-                    <td className="num">{Math.round(summary.totals.pro)} g</td>
-                    <td className="num">{Math.round(summary.totals.fat)} g</td>
-                    <td className="num">{Math.round(summary.totalCal)} kcal</td>
+                    <td className="num"><Counter value={Math.round(summary.totals.cho)}/> g</td>
+                    <td className="num"><Counter value={Math.round(summary.totals.pro)}/> g</td>
+                    <td className="num"><Counter value={Math.round(summary.totals.fat)}/> g</td>
+                    <td className="num"><Counter value={Math.round(summary.totalCal)}/> kcal</td>
                   </tr>
                 </tfoot>
               </table>
@@ -356,14 +356,14 @@ function CalculatorPage() {
   );
 }
 
-function StatCard({ label, value, unit, hint, corner, delay }) {
+function StatCard({ label, value, unit, hint, corner, delay, decimals = 0 }) {
   const isNumeric = typeof value === "number";
   return (
     <article className="stat rise" style={{ "--motion-delay": `${delay}ms` }}>
       <span className="label">{label}</span>
       <strong className="value">
         <span key={String(value)} className="value-flip">
-          {isNumeric ? <Counter value={value}/> : value}
+          {isNumeric ? <Counter value={value} decimals={decimals}/> : value}
         </span>
         <small>{unit}</small>
       </strong>

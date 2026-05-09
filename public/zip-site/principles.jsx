@@ -56,7 +56,7 @@ function PrinciplesPage() {
           </article>
           <article className="stat rise" style={{ "--motion-delay": "120ms" }}>
             <span className="label">估算每日熱量</span>
-            <strong className="value">{targetCal}<small>kcal</small></strong>
+            <strong className="value"><Counter value={targetCal}/><small>kcal</small></strong>
             <p className="hint">{profile.weightKg} × {goal.calorieFactor}</p>
             <span className="corner-mark">≈</span>
           </article>
