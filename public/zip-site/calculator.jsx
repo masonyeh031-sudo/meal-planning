@@ -75,12 +75,11 @@ function exportCSV(ctx, filename) {
     lines.push([m.label, `${Math.round(m.cal)} kcal`, `${Math.round(m.grams)} g (${m.ratio.toFixed(1)}%)`].map(escapeCsv).join(","));
   }
   lines.push("");
-  lines.push("【六大類食物份數】");
-  lines.push(["類別", "目前份數", "建議份數", "差距"].map(escapeCsv).join(","));
+  lines.push("【六大類食物建議份數】");
+  lines.push(["類別", "建議份數"].map(escapeCsv).join(","));
   for (const g of foodGroups) {
-    const cur = servings[g.id];
     const tgt = recommendation.recommendedServings[g.id];
-    lines.push([g.label, fmtNum(cur), fmtNum(tgt), fmtNum(cur - tgt)].map(escapeCsv).join(","));
+    lines.push([g.label, fmtNum(tgt)].map(escapeCsv).join(","));
   }
   const csv = "﻿" + lines.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -113,9 +112,8 @@ function exportXLS(ctx, filename) {
     ...macros.map((m) => [m.label, `${Math.round(m.cal)} kcal`, `${Math.round(m.grams)} g (${m.ratio.toFixed(1)}%)`]),
   ];
   const rowsServings = foodGroups.map((g) => {
-    const cur = servings[g.id];
     const tgt = recommendation.recommendedServings[g.id];
-    return [g.label, fmtNum(cur), fmtNum(tgt), fmtNum(cur - tgt)];
+    return [g.label, fmtNum(tgt)];
   });
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>
     <h1>飲食計劃 · Daily Nutrition Report</h1>
@@ -124,8 +122,8 @@ function exportXLS(ctx, filename) {
     <table><tr><th>欄位</th><th>數值</th></tr>${rowsProfile.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td></tr>`).join("")}</table>
     <h2>熱量與三大營養素</h2>
     <table><tr><th>項目</th><th>數值</th><th>單位</th></tr>${rowsMacro.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td><td>${escapeHtml(r[2] || "")}</td></tr>`).join("")}</table>
-    <h2>六大類食物份數</h2>
-    <table><tr><th>類別</th><th>目前份數</th><th>建議份數</th><th>差距</th></tr>${rowsServings.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td><td class="num">${escapeHtml(r[2])}</td><td class="num">${escapeHtml(r[3])}</td></tr>`).join("")}</table>
+    <h2>六大類食物建議份數</h2>
+    <table><tr><th>類別</th><th>建議份數</th></tr>${rowsServings.map((r) => `<tr><td>${escapeHtml(r[0])}</td><td class="num">${escapeHtml(r[1])}</td></tr>`).join("")}</table>
     </body></html>`;
   const blob = new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" });
   triggerDownload(blob, filename);
@@ -236,27 +234,24 @@ function exportJPG(ctx, filename) {
 
   // Food groups
   y += 150;
-  section("六大類食物份數", y);
+  section("六大類食物建議份數", y);
   y += 60;
+  const tgtMax = Math.max(...foodGroups.map((fg) => recommendation.recommendedServings[fg.id]), 1);
   foodGroups.forEach((fg, i) => {
-    const cur = servings[fg.id];
     const tgt = recommendation.recommendedServings[fg.id];
     const fy = y + i * 56;
-    const max = Math.max(cur, tgt, 1);
     g.fillStyle = "#29231a"; g.font = "600 16px 'Noto Sans TC', sans-serif";
     g.fillText(fg.label, 60, fy + 18);
     g.fillStyle = "#6b5e4d"; g.font = "500 13px 'Noto Sans TC', sans-serif";
-    g.fillText(`目前 ${fmtNum(cur)} 份 · 建議 ${fmtNum(tgt)} 份`, 60, fy + 40);
+    g.fillText(`建議 ${fmtNum(tgt)} 份`, 60, fy + 40);
 
     const trackX = 380, trackW = W - 60 - trackX, trackH = 14, trackY = fy + 14;
     g.fillStyle = "rgba(0,0,0,0.06)";
-    roundRect(g, trackX, trackY, trackW, trackH, 7, true, false);
-    g.fillStyle = "rgba(184,90,42,0.18)";
-    roundRect(g, trackX, trackY, (tgt / max) * trackW, trackH, 7, true, false);
+    g.fillRect(trackX, trackY, trackW, trackH);
     const grad = g.createLinearGradient(trackX, 0, trackX + trackW, 0);
     grad.addColorStop(0, "#f1dfb6"); grad.addColorStop(1, "#b85a2a");
     g.fillStyle = grad;
-    roundRect(g, trackX, trackY, (cur / max) * trackW, trackH, 7, true, false);
+    g.fillRect(trackX, trackY, (tgt / tgtMax) * trackW, trackH);
   });
 
   // Footer
@@ -298,12 +293,9 @@ function exportPDF(ctx, filename) {
         <td class="num">${Math.round(m.grams)} g</td>
         <td class="num">${m.ratio.toFixed(1)}%</td></tr>`).join("");
   const groupRows = foodGroups.map((g) => {
-    const cur = servings[g.id];
     const tgt = recommendation.recommendedServings[g.id];
     return `<tr><td>${escapeHtml(g.label)}</td>
-            <td class="num">${escapeHtml(fmtNum(cur))}</td>
-            <td class="num">${escapeHtml(fmtNum(tgt))}</td>
-            <td class="num">${escapeHtml(fmtNum(cur - tgt))}</td></tr>`;
+            <td class="num">${escapeHtml(fmtNum(tgt))}</td></tr>`;
   }).join("");
 
   const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
@@ -355,9 +347,9 @@ function exportPDF(ctx, filename) {
       <tbody>${macroRows}</tbody>
     </table>
 
-    <h2>六大類食物份數</h2>
+    <h2>六大類食物建議份數</h2>
     <table>
-      <thead><tr><th>類別</th><th class="num">目前份數</th><th class="num">建議份數</th><th class="num">差距</th></tr></thead>
+      <thead><tr><th>類別</th><th class="num">建議份數</th></tr></thead>
       <tbody>${groupRows}</tbody>
     </table>
 
