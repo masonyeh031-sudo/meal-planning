@@ -132,7 +132,8 @@ function exportXLS(ctx, filename) {
 
 function exportJPG(ctx, filename) {
   const { profile, recommendation, summary, servings, goalLabel, activityLabel, sexLabel, foodGroups, macros } = ctx;
-  const W = 1100, H = 1400;
+  const W = 1400, H = 1900;
+  const PAD = 80;
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const g = c.getContext("2d");
@@ -141,123 +142,137 @@ function exportJPG(ctx, filename) {
   g.fillStyle = "#fbf6ec";
   g.fillRect(0, 0, W, H);
   g.fillStyle = "#f0d4be";
-  g.fillRect(0, 0, W, 12);
+  g.fillRect(0, 0, W, 16);
 
   // Title
   g.fillStyle = "#29231a";
-  g.font = "700 44px 'Noto Serif TC', serif";
-  g.fillText("飲食計劃", 60, 90);
-  g.font = "500 18px 'Noto Sans TC', sans-serif";
+  g.font = "700 60px 'Noto Serif TC', serif";
+  g.fillText("飲食計劃", PAD, 120);
+  g.font = "500 24px 'Noto Sans TC', sans-serif";
   g.fillStyle = "#6b5e4d";
-  g.fillText("Daily Nutrition Report · " + new Date().toLocaleString("zh-Hant"), 60, 122);
+  g.fillText("Daily Nutrition Report · " + new Date().toLocaleString("zh-Hant"), PAD, 160);
 
   // Section helper
   function section(label, y) {
     g.fillStyle = "#b85a2a";
-    g.font = "700 14px 'Noto Sans TC', sans-serif";
-    g.fillText(label.toUpperCase(), 60, y);
+    g.font = "700 18px 'Noto Sans TC', sans-serif";
+    g.fillText(label.toUpperCase(), PAD, y);
     g.fillStyle = "#29231a";
-    g.font = "600 22px 'Noto Serif TC', serif";
-    g.fillText(label, 60, y + 26);
+    g.font = "600 30px 'Noto Serif TC', serif";
+    g.fillText(label, PAD, y + 38);
     g.strokeStyle = "#e3d6bb";
-    g.lineWidth = 1;
-    g.beginPath(); g.moveTo(60, y + 38); g.lineTo(W - 60, y + 38); g.stroke();
+    g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(PAD, y + 54); g.lineTo(W - PAD, y + 54); g.stroke();
   }
 
   function statBox(x, y, w, h, label, value, unit, hue) {
     g.fillStyle = "#ffffff";
     g.strokeStyle = "#e3d6bb";
-    g.lineWidth = 1;
-    roundRect(g, x, y, w, h, 14, true, true);
+    g.lineWidth = 1.5;
+    roundRect(g, x, y, w, h, 16, true, true);
     g.fillStyle = "#9a8b76";
-    g.font = "600 11px 'Noto Sans TC', sans-serif";
-    g.fillText(label, x + 18, y + 28);
+    g.font = "600 15px 'Noto Sans TC', sans-serif";
+    g.fillText(label, x + 22, y + 38);
     g.fillStyle = hue || "#29231a";
-    g.font = "700 30px 'Noto Serif TC', serif";
-    g.fillText(value, x + 18, y + 64);
+    g.font = "700 40px 'Noto Serif TC', serif";
+    g.fillText(value, x + 22, y + 88);
     if (unit) {
-      g.fillStyle = "#9a8b76";
-      g.font = "500 13px 'Noto Sans TC', sans-serif";
-      const valWidth = g.measureText(value).width;
-      g.fillText(unit, x + 18 + valWidth + 6, y + 64);
+      g.fillStyle = "#6b5e4d";
+      g.font = "500 16px 'Noto Sans TC', sans-serif";
+      g.fillText(unit, x + 22, y + 116);
     }
   }
 
   // Stat row
-  let y = 170;
-  const boxW = (W - 60 * 2 - 18 * 3) / 4;
-  statBox(60, y, boxW, 100, "每日建議熱量", String(recommendation.targetCalories), "kcal", "#b85a2a");
-  statBox(60 + (boxW + 18) * 1, y, boxW, 100, "目前份數熱量", String(Math.round(summary.totalCal)), "kcal", "#4a6b32");
-  statBox(60 + (boxW + 18) * 2, y, boxW, 100, "BMI", recommendation.bmi.toFixed(1), recommendation.bmiStatus, "#c8923a");
-  statBox(60 + (boxW + 18) * 3, y, boxW, 100, "活動量", activityLabel, profile.age + " 歲", "#8a3d3d");
+  let y = 210;
+  const gap = 20;
+  const boxW = (W - PAD * 2 - gap * 3) / 4;
+  const boxH = 140;
+  statBox(PAD + (boxW + gap) * 0, y, boxW, boxH, "每日建議熱量", String(recommendation.targetCalories), "kcal", "#b85a2a");
+  statBox(PAD + (boxW + gap) * 1, y, boxW, boxH, "目前份數熱量", String(Math.round(summary.totalCal)), "kcal", "#4a6b32");
+  statBox(PAD + (boxW + gap) * 2, y, boxW, boxH, "BMI", recommendation.bmi.toFixed(1), recommendation.bmiStatus, "#c8923a");
+  statBox(PAD + (boxW + gap) * 3, y, boxW, boxH, "活動量", activityLabel, profile.age + " 歲", "#8a3d3d");
 
   // Profile
-  y = 320;
+  y = 410;
   section("個人資料", y);
-  y += 64;
+  y += 90;
   const profItems = [
     ["身高", profile.heightCm + " cm"], ["體重", profile.weightKg + " kg"],
     ["年齡", profile.age + " 歲"], ["性別", sexLabel],
     ["活動量", activityLabel], ["目標", goalLabel],
   ];
-  g.font = "500 16px 'Noto Sans TC', sans-serif";
+  const colW = (W - PAD * 2) / 3;
   profItems.forEach((p, i) => {
-    const px = 60 + (i % 3) * 340;
-    const py = y + Math.floor(i / 3) * 36;
-    g.fillStyle = "#9a8b76"; g.fillText(p[0], px, py);
-    g.fillStyle = "#29231a"; g.font = "600 16px 'Noto Serif TC', serif"; g.fillText(p[1], px + 70, py);
-    g.font = "500 16px 'Noto Sans TC', sans-serif";
+    const px = PAD + (i % 3) * colW;
+    const py = y + Math.floor(i / 3) * 48;
+    g.fillStyle = "#9a8b76"; g.font = "500 20px 'Noto Sans TC', sans-serif";
+    g.fillText(p[0], px, py);
+    g.fillStyle = "#29231a"; g.font = "600 22px 'Noto Serif TC', serif";
+    g.fillText(p[1], px + 90, py);
   });
 
   // Macros
-  y += 100;
+  y += 140;
   section("三大營養素", y);
-  y += 60;
+  y += 90;
   const macroColors = ["#c8923a", "#b85a2a", "#4a6b32"];
+  const mGap = 20;
+  const mw = (W - PAD * 2 - mGap * 2) / 3;
+  const mh = 150;
   macros.forEach((m, i) => {
-    const mx = 60 + i * ((W - 60 * 2 - 18 * 2) / 3 + 18);
-    const mw = (W - 60 * 2 - 18 * 2) / 3;
-    g.fillStyle = "#ffffff"; g.strokeStyle = "#e3d6bb"; g.lineWidth = 1;
-    roundRect(g, mx, y, mw, 110, 14, true, true);
+    const mx = PAD + i * (mw + mGap);
+    g.fillStyle = "#ffffff"; g.strokeStyle = "#e3d6bb"; g.lineWidth = 1.5;
+    roundRect(g, mx, y, mw, mh, 16, true, true);
     g.fillStyle = macroColors[i];
-    g.fillRect(mx, y, 4, 110);
+    g.fillRect(mx, y, 6, mh);
     g.fillStyle = "#29231a";
-    g.font = "600 16px 'Noto Sans TC', sans-serif";
-    g.fillText(m.label, mx + 18, y + 30);
+    g.font = "600 22px 'Noto Sans TC', sans-serif";
+    g.fillText(m.label, mx + 24, y + 42);
     g.fillStyle = macroColors[i];
-    g.font = "700 30px 'Noto Serif TC', serif";
-    g.fillText(Math.round(m.grams) + " g", mx + 18, y + 70);
+    g.font = "700 40px 'Noto Serif TC', serif";
+    g.fillText(Math.round(m.grams) + " g", mx + 24, y + 92);
     g.fillStyle = "#6b5e4d";
-    g.font = "500 13px 'Noto Sans TC', sans-serif";
-    g.fillText(`${Math.round(m.cal)} kcal · ${m.ratio.toFixed(1)}%`, mx + 18, y + 95);
+    g.font = "500 17px 'Noto Sans TC', sans-serif";
+    g.fillText(`${Math.round(m.cal)} kcal · ${m.ratio.toFixed(1)}%`, mx + 24, y + 124);
   });
 
   // Food groups
-  y += 150;
+  y += mh + 60;
   section("六大類食物建議份數", y);
-  y += 60;
+  y += 90;
   const tgtMax = Math.max(...foodGroups.map((fg) => recommendation.recommendedServings[fg.id]), 1);
+  const rowH = 80;
   foodGroups.forEach((fg, i) => {
     const tgt = recommendation.recommendedServings[fg.id];
-    const fy = y + i * 56;
-    g.fillStyle = "#29231a"; g.font = "600 16px 'Noto Sans TC', sans-serif";
-    g.fillText(fg.label, 60, fy + 18);
-    g.fillStyle = "#6b5e4d"; g.font = "500 13px 'Noto Sans TC', sans-serif";
-    g.fillText(`建議 ${fmtNum(tgt)} 份`, 60, fy + 40);
+    const fy = y + i * rowH;
+    g.fillStyle = "#29231a"; g.font = "600 22px 'Noto Sans TC', sans-serif";
+    g.fillText(fg.label, PAD, fy + 22);
+    g.fillStyle = "#6b5e4d"; g.font = "500 17px 'Noto Sans TC', sans-serif";
+    g.fillText(`建議 ${fmtNum(tgt)} 份`, PAD, fy + 50);
 
-    const trackX = 380, trackW = W - 60 - trackX, trackH = 14, trackY = fy + 14;
+    const trackX = PAD + 320;
+    const trackW = W - PAD - trackX - 90; // reserve space for serving number on right
+    const trackH = 22;
+    const trackY = fy + 22;
     g.fillStyle = "rgba(0,0,0,0.06)";
     g.fillRect(trackX, trackY, trackW, trackH);
+    const fillW = (tgt / tgtMax) * trackW;
     const grad = g.createLinearGradient(trackX, 0, trackX + trackW, 0);
     grad.addColorStop(0, "#f1dfb6"); grad.addColorStop(1, "#b85a2a");
     g.fillStyle = grad;
-    g.fillRect(trackX, trackY, (tgt / tgtMax) * trackW, trackH);
+    g.fillRect(trackX, trackY, fillW, trackH);
+
+    // Serving number annotation right after the bar end
+    g.fillStyle = "#b85a2a";
+    g.font = "700 24px 'Noto Serif TC', serif";
+    g.fillText(`${fmtNum(tgt)} 份`, trackX + fillW + 12, trackY + 18);
   });
 
   // Footer
   g.fillStyle = "#9a8b76";
-  g.font = "500 12px 'Noto Sans TC', sans-serif";
-  g.fillText("此報表為估算值，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。", 60, H - 40);
+  g.font = "500 16px 'Noto Sans TC', sans-serif";
+  g.fillText("此報表為估算值，實際飲食仍需依個人健康狀況、運動安排與營養師建議調整。", PAD, H - 50);
 
   return new Promise((resolve, reject) => {
     c.toBlob((blob) => {
@@ -292,32 +307,46 @@ function exportPDF(ctx, filename) {
         <td class="num">${Math.round(m.cal)} kcal</td>
         <td class="num">${Math.round(m.grams)} g</td>
         <td class="num">${m.ratio.toFixed(1)}%</td></tr>`).join("");
-  const groupRows = foodGroups.map((g) => {
-    const tgt = recommendation.recommendedServings[g.id];
-    return `<tr><td>${escapeHtml(g.label)}</td>
-            <td class="num">${escapeHtml(fmtNum(tgt))}</td></tr>`;
+  const tgtMaxPdf = Math.max(...foodGroups.map((fg) => recommendation.recommendedServings[fg.id]), 1);
+  const groupRows = foodGroups.map((gp) => {
+    const tgt = recommendation.recommendedServings[gp.id];
+    const pct = (tgt / tgtMaxPdf) * 100;
+    return `<tr>
+      <td><strong>${escapeHtml(gp.label)}</strong></td>
+      <td class="bar-cell">
+        <div class="bar-wrap">
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+      <td class="num bar-value">${escapeHtml(fmtNum(tgt))} 份</td>
+    </tr>`;
   }).join("");
 
   const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
     <title>${escapeHtml(filename)}</title>
     <style>
-      @page { size: A4; margin: 18mm 16mm; }
+      @page { size: A4; margin: 16mm 14mm; }
       * { box-sizing: border-box; }
-      body { font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; color: #29231a; margin: 0; }
-      h1 { font-family: "Noto Serif TC", serif; font-size: 28px; margin: 0 0 4px; color: #29231a; }
-      h2 { font-family: "Noto Serif TC", serif; font-size: 17px; margin: 22px 0 8px; color: #b85a2a; border-bottom: 1px solid #e3d6bb; padding-bottom: 4px; }
-      .meta { color: #6b5e4d; font-size: 12px; margin-bottom: 16px; }
-      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
-      .stat { background: #fbf6ec; border: 1px solid #e3d6bb; border-radius: 10px; padding: 12px 14px; }
-      .stat .label { color: #9a8b76; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
-      .stat .value { font-family: "Noto Serif TC", serif; font-size: 22px; font-weight: 700; margin-top: 6px; }
-      .stat .unit { color: #6b5e4d; font-size: 11px; margin-left: 4px; }
-      table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-      th, td { padding: 7px 10px; border-bottom: 1px solid #ece2cb; text-align: left; }
-      th { background: #f3ead6; color: #29231a; font-weight: 600; }
+      body { font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; color: #29231a; margin: 0; font-size: 15px; line-height: 1.55; }
+      h1 { font-family: "Noto Serif TC", serif; font-size: 36px; margin: 0 0 6px; color: #29231a; }
+      h2 { font-family: "Noto Serif TC", serif; font-size: 22px; margin: 26px 0 12px; color: #b85a2a; border-bottom: 1.5px solid #e3d6bb; padding-bottom: 6px; }
+      .meta { color: #6b5e4d; font-size: 15px; margin-bottom: 18px; }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px; }
+      .stat { background: #fbf6ec; border: 1px solid #e3d6bb; border-radius: 12px; padding: 16px 18px; }
+      .stat .label { color: #9a8b76; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; }
+      .stat .value { font-family: "Noto Serif TC", serif; font-size: 30px; font-weight: 700; margin-top: 8px; color: #b85a2a; }
+      .stat .unit { color: #6b5e4d; font-size: 14px; margin-left: 6px; font-weight: 500; }
+      table { width: 100%; border-collapse: collapse; font-size: 16px; }
+      th, td { padding: 10px 14px; border-bottom: 1px solid #ece2cb; text-align: left; }
+      th { background: #f3ead6; color: #29231a; font-weight: 600; font-size: 15px; }
       td.num, th.num { text-align: right; font-family: "Consolas", monospace; }
-      .footer { margin-top: 24px; color: #9a8b76; font-size: 11px; line-height: 1.6; }
-      .actions { margin: 16px 0 8px; padding: 10px 12px; background: #faf3df; border: 1px dashed #c8b89c; border-radius: 8px; font-size: 12px; color: #6b5e4d; }
+      .bar-cell { width: 60%; padding: 8px 12px; }
+      .bar-wrap { width: 100%; }
+      .bar-track { width: 100%; height: 18px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden; }
+      .bar-fill { height: 100%; background: linear-gradient(90deg, #f1dfb6 0%, #b85a2a 100%); border-radius: 4px; }
+      .bar-value { font-family: "Noto Serif TC", serif; font-size: 18px; font-weight: 700; color: #b85a2a; white-space: nowrap; }
+      .footer { margin-top: 28px; color: #9a8b76; font-size: 13px; line-height: 1.7; }
+      .actions { margin: 16px 0 8px; padding: 12px 14px; background: #faf3df; border: 1px dashed #c8b89c; border-radius: 8px; font-size: 14px; color: #6b5e4d; }
       @media print { .actions { display: none; } }
     </style>
   </head><body>
@@ -331,7 +360,7 @@ function exportPDF(ctx, filename) {
       <div class="stat"><div class="label">每日建議熱量</div><div class="value">${recommendation.targetCalories}<span class="unit">kcal</span></div></div>
       <div class="stat"><div class="label">目前份數熱量</div><div class="value">${Math.round(summary.totalCal)}<span class="unit">kcal</span></div></div>
       <div class="stat"><div class="label">BMI</div><div class="value">${recommendation.bmi.toFixed(1)}<span class="unit">${escapeHtml(recommendation.bmiStatus)}</span></div></div>
-      <div class="stat"><div class="label">活動量 / 年齡</div><div class="value" style="font-size:18px;">${escapeHtml(activityLabel)}<span class="unit">${profile.age} 歲</span></div></div>
+      <div class="stat"><div class="label">活動量 / 年齡</div><div class="value" style="font-size:24px;">${escapeHtml(activityLabel)}<span class="unit">${profile.age} 歲</span></div></div>
     </div>
 
     <h2>個人資料</h2>
@@ -349,7 +378,7 @@ function exportPDF(ctx, filename) {
 
     <h2>六大類食物建議份數</h2>
     <table>
-      <thead><tr><th>類別</th><th class="num">建議份數</th></tr></thead>
+      <thead><tr><th>類別</th><th>份數分布</th><th class="num">建議份數</th></tr></thead>
       <tbody>${groupRows}</tbody>
     </table>
 
