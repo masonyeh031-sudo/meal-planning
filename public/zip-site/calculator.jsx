@@ -795,13 +795,33 @@ function StatCard({ label, value, unit, hint, corner, delay, decimals = 0 }) {
 }
 
 function NumField({ label, unit, value, min, max, step, onChange }) {
+  const [draft, setDraft] = React.useState(String(value));
+  // Keep draft in sync when external value changes (e.g. stepper button)
+  React.useEffect(() => { setDraft(String(value)); }, [value]);
+
+  function commit() {
+    const v = Number(draft);
+    if (!Number.isFinite(v)) { setDraft(String(value)); return; }
+    const clamped = Math.min(max, Math.max(min, v));
+    setDraft(String(clamped));
+    if (clamped !== value) onChange(clamped);
+  }
+
   return (
     <div className="field">
       <div className="field-label">{label} <span className="unit">{unit}</span></div>
       <div className="numeric">
         <button className="step" onClick={() => onChange(Math.max(min, Math.round((value - step) / step) * step))}>−</button>
-        <input type="number" value={value} min={min} max={max} step={step}
-          onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v))); }}/>
+        <input
+          type="number"
+          value={draft}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+        />
         <button className="step" onClick={() => onChange(Math.min(max, Math.round((value + step) / step) * step))}>＋</button>
       </div>
     </div>
