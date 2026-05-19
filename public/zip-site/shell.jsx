@@ -27,7 +27,7 @@ function TopBar({ route, navigate }) {
     <header className="topbar">
       <div className="container topbar-inner">
         <div className="brand">
-          <div className="brand-mark">飲</div>
+          <img className="brand-mark" src="logo-mark.svg" alt="飲食計劃 logo" width="42" height="42"/>
           <div className="brand-text">
             <strong>飲食計劃</strong>
             <span>Daily Nutrition · 民國 115 春</span>

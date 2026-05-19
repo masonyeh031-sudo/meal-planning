@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 80" role="img" aria-label="飲食計劃 Daily Nutrition">
+  <defs>
+    <linearGradient id="bowl2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c8923a"/>
+      <stop offset="1" stop-color="#b85a2a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- mark -->
+  <g transform="translate(8,8)">
+    <circle cx="32" cy="32" r="30" fill="#fbf6ec"/>
+    <circle cx="32" cy="32" r="30" fill="none" stroke="#e3d6bb" stroke-width="1.5"/>
+    <path d="M22 22 C 20 18, 24 16, 22 12" fill="none" stroke="#4a6b32" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+    <path d="M32 21 C 30 17, 34 15, 32 11" fill="none" stroke="#8a3d3d" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+    <path d="M42 22 C 40 18, 44 16, 42 12" fill="none" stroke="#c8923a" stroke-width="2" stroke-linecap="round" opacity="0.95"/>
+    <ellipse cx="32" cy="29" rx="20" ry="3.5" fill="#29231a"/>
+    <ellipse cx="32" cy="28.5" rx="18.5" ry="2.4" fill="#f0d4be"/>
+    <path d="M12 29 Q 12 50, 32 50 Q 52 50, 52 29 Z" fill="url(#bowl2)"/>
+    <path d="M22 50 Q 32 54, 42 50" fill="none" stroke="#29231a" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/>
+    <path d="M44 27.5 Q 48 24, 50 26 Q 49 29, 45 29 Z" fill="#4a6b32"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="88" y="42" font-family="'Noto Serif TC', 'PingFang TC', serif" font-weight="600" font-size="26" fill="#29231a" letter-spacing="2">飲食計劃</text>
+  <text x="88" y="62" font-family="'Noto Sans TC', sans-serif" font-weight="500" font-size="10" fill="#9a8b76" letter-spacing="3">DAILY · NUTRITION</text>
+</svg>
