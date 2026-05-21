@@ -16,11 +16,12 @@ function App() {
     document.body.style.fontSize = `${15 * tweaks.fontScale}px`;
   }, [tweaks.theme, tweaks.fontScale]);
 
-  const Page = route === "guide" ? FoodGuidePage
+  const Page = route === "calculator" ? CalculatorPage
+    : route === "guide" ? FoodGuidePage
     : route === "eating-out" ? EatingOutPage
     : route === "principles" ? PrinciplesPage
     : route === "records" ? RecordsPage
-    : CalculatorPage;
+    : HomePage;
 
   return (
     <div className="app-shell">

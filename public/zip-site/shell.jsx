@@ -3,6 +3,7 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
 const PAGES = [
+  { id: "home", label: "首頁", sub: "Home" },
   { id: "calculator", label: "飲食計算器", sub: "Calculator" },
   { id: "guide", label: "六大類食物指南", sub: "Food Guide" },
   { id: "eating-out", label: "外食怎麼吃", sub: "Eating Out" },
@@ -11,9 +12,9 @@ const PAGES = [
 ];
 
 function useHashRoute() {
-  const [route, setRoute] = useState(() => window.location.hash.replace("#", "") || "calculator");
+  const [route, setRoute] = useState(() => window.location.hash.replace("#", "") || "home");
   useEffect(() => {
-    const onHash = () => setRoute(window.location.hash.replace("#", "") || "calculator");
+    const onHash = () => setRoute(window.location.hash.replace("#", "") || "home");
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
@@ -26,13 +27,13 @@ function TopBar({ route, navigate }) {
   return (
     <header className="topbar">
       <div className="container topbar-inner">
-        <div className="brand">
+        <button className="brand brand-btn" onClick={() => navigate("home")} aria-label="回首頁">
           <img className="brand-mark" src="logo-mark.svg" alt="飲食計劃 logo" width="42" height="42"/>
           <div className="brand-text">
             <strong>飲食計劃</strong>
             <span>Daily Nutrition · 民國 115 春</span>
           </div>
-        </div>
+        </button>
         <nav className="nav" aria-label="主要分頁">
           {PAGES.map((p) => (
             <button
